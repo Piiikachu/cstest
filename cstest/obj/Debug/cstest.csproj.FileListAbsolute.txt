@@ -1,0 +1,6 @@
+E:\Work\Linux\cstest\cstest\obj\Debug\cstest.csprojResolveAssemblyReference.cache
+E:\Work\Linux\cstest\cstest\bin\Debug\cstest.exe.config
+E:\Work\Linux\cstest\cstest\bin\Debug\cstest.exe
+E:\Work\Linux\cstest\cstest\bin\Debug\cstest.pdb
+E:\Work\Linux\cstest\cstest\obj\Debug\cstest.exe
+E:\Work\Linux\cstest\cstest\obj\Debug\cstest.pdb
