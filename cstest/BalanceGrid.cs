@@ -29,7 +29,7 @@ namespace cstest
             if (narg < 1) sparta.error.all( "Illegal balance_grid command");
 
             int order=0, bstyle=0;
-            int px, py, pz;
+            int px = 0, py = 0, pz = 0;
             int rcbwt, rcbflip;
 
             if (string.Equals(arg[0], "none")  )
@@ -97,7 +97,7 @@ namespace cstest
                 else if (string.Equals(arg[1], "part")  ) rcbwt = (int)Enum3.PARTICLE;
                 else sparta.error.all( "Illegal balance_grid command");
                 // undocumented optional 3rd arg
-                // rcbflip = 3rd arg = 1 forces rcb->compute() to flip sign
+                // rcbflip = 3rd arg = 1 forces rcb.compute() to flip sign
                 //           of all grid cell "dots" to force totally different
                 //           assignment of grid cells to procs and induce
                 //           complete rebalance data migration
@@ -171,11 +171,11 @@ namespace cstest
                 int ny = sparta.grid.uny;
                 int nz = sparta.grid.unz;
 
-                procs2grid(nx, ny, nz, px, py, pz);
+                procs2grid(nx, ny, nz,ref px,ref py,ref pz);
                 if (px * py * pz != nprocs)
                     sparta.error.all("Bad grid of processors for balance_grid block");
 
-                for (int icell = 0; icell < nglocal; icell++)dddwaw
+                for (int icell = 0; icell < nglocal; icell++)
                 {
                     if (cells[icell].nsplit <= 0) continue;
                     idm1 = cells[icell].id - 1;
@@ -193,10 +193,34 @@ namespace cstest
                 }
 
             }
+            else if (bstyle == (int)Enum1.RANDOM)
+            {
+                
+                RanPark random = new RanPark(sparta.update.ranmaster.uniform());
+                double seed = sparta.update.ranmaster.uniform();
+                random.reset(seed, sparta.comm.me, 100);
 
+                for (int icell = 0; icell < nglocal; icell++)
+                {
+                    if (cells[icell].nsplit <= 0) continue;
+                    newproc =Convert.ToInt32( nprocs * random.uniform());
+                    if (newproc != cells[icell].proc) nmigrate++;
+                    cells[icell].proc = newproc;
+                }
+
+                //delete random;
+
+            }
+            else if (bstyle==(int)Enum1.BISECTION)
+            {
+
+            }
         }
 
-        
-        //private void procs2grid(int, int, int, int &, int &, int &);
+
+        private void procs2grid(int nx, int ny, int nz,ref int px,ref int py,ref int pz)
+        {
+
+        }
     }
 }

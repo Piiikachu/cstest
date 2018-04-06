@@ -237,12 +237,31 @@ namespace cstest
         //                   int* source, int* dest){}
         //int MPI_Cart_rank(MPI_Comm comm, int* coords, int* rank){}
 
-        //int MPI_Type_contiguous(int count, MPI_Datatype oldtype,
-        //                        MPI_Datatype* newtype){}
-        //int MPI_Type_commit(MPI_Datatype* datatype){}
+        public int MPI_Type_contiguous(int count, MPI_Datatype oldtype,ref MPI_Datatype newtype)
+        {
+            if (nextra_datatype == MAXEXTRA_DATATYPE) return -1;
+            ptr_datatype[nextra_datatype] = newtype;
+            index_datatype[nextra_datatype] = -(nextra_datatype + 1);
+            size_datatype[nextra_datatype] = count * stubtypesize(oldtype);
+            nextra_datatype++;
+            return 0;
+        }
+        public int MPI_Type_commit(ref MPI_Datatype datatype)
+        {
+            int i;
+            for (i = 0; i < nextra_datatype; i++)
+                if (datatype == ptr_datatype[i]) datatype = index_datatype[i];
+            return 0;
+        }
         //int MPI_Type_free(MPI_Datatype* datatype){}
 
-        //int MPI_Op_create(MPI_User_function* function, int commute, MPI_Op* op){}
+        public delegate void MPI_User_function(IntPtr inn,IntPtr inout,ref int a,ref MPI_Datatype b);
+
+
+        public int MPI_Op_create(MPI_User_function function, int commute,ref MPI_Op op)
+        {
+            return 0;
+        }
         //int MPI_Op_free(MPI_Op* op){}
 
         public int MPI_Barrier(MPI_Comm comm)
