@@ -21,8 +21,10 @@ namespace cstest
         {
             this.sparta = sparta;
         }
-        public void command(int narg, string[] arg, int outflag = 1)
+        public void command(int narg, string[] args, int outflag = 1)
         {
+            string[] arg = new string[narg];
+            Array.Copy(args, 1, arg, 0, narg);
             if (sparta.grid.exist ==0)
                 sparta.error.all( "Cannot balance grid before grid is defined");
 
@@ -30,7 +32,7 @@ namespace cstest
 
             int order=0, bstyle=0;
             int px = 0, py = 0, pz = 0;
-            int rcbwt, rcbflip;
+            int rcbwt=0, rcbflip=0;
 
             if (string.Equals(arg[0], "none")  )
             {
@@ -213,7 +215,64 @@ namespace cstest
             }
             else if (bstyle==(int)Enum1.BISECTION)
             {
+                RCB rcb = new RCB(sparta);
 
+                double[,] x=new double[nglocal,3];
+
+                double[] lo,hi;
+
+                int nbalance = 0;
+
+                for (int icell = 0; icell < nglocal; icell++)
+                {
+                    if (cells[icell].nsplit <= 0) continue;
+                    lo = cells[icell].lo;
+                    hi = cells[icell].hi;
+                    x[nbalance,0] = 0.5 * (lo[0] + hi[0]);
+                    x[nbalance,1] = 0.5 * (lo[1] + hi[1]);
+                    x[nbalance,2] = 0.5 * (lo[2] + hi[2]);
+                    nbalance++;
+                }
+
+                double[] wt;
+
+                if (rcbwt==(int)Enum3.PARTICLE)
+                {
+                    sparta.particle.sort();
+                    int zero = 0;
+                    int n;
+                    wt = new double[nglocal];
+                    nbalance = 0;
+                    for (int icell = 0; icell < nglocal; icell++)
+                    {
+                        if (cells[icell].nsplit <= 0) continue;
+                        n = cinfo[icell].count;
+                        if (n!=0) wt[nbalance++] = n;
+                        else
+                        {
+                            wt[nbalance++] = ZEROPARTICLE;
+                            zero++;
+                        }
+                    }
+                }
+                else
+                {
+                    wt = new double[nglocal];
+                }
+
+                rcb.compute(nbalance, x, wt, rcbflip);
+                rcb.invert();
+
+                nbalance = 0;
+                int[] sendproc = rcb.sendproc;
+                for (int icell = 0; icell < nglocal; icell++)
+                {
+                    if (cells[icell].nsplit <= 0) continue;
+                    cells[icell].proc = sendproc[nbalance++];
+                }
+                nmigrate = nbalance - rcb.nkeep;
+
+                
             }
         }
 

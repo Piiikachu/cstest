@@ -60,6 +60,7 @@
     <Compile Include="MathExtra.cs" />
     <Compile Include="Memory.cs" />
     <Compile Include="MemoryKokkos.cs" />
+    <Compile Include="Mixture.cs" />
     <Compile Include="Modify.cs" />
     <Compile Include="mpi.cs" />
     <Compile Include="MyConst.cs" />

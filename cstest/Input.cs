@@ -332,7 +332,7 @@ namespace cstest
             string[] strArray = strings.ToArray();
             narg = strArray.Length - 1;
             arg = strArray;
-            System.Console.WriteLine(strArray[0]);
+            System.Console.Write("\n"+strArray[0]+"...........");
             execute_command(strings[0]);
             
 
@@ -457,8 +457,8 @@ namespace cstest
             else
             {
                 flag = false;
-                //sparta.error.universe_all("unknown command1");
-                System.Console.WriteLine("unknown command1");
+                sparta.error.universe_all("unknown command1");
+                //System.Console.WriteLine("unknown command1");
             }
 
             if (sparta.suffix_enable!=0&&sparta.suffix!=null)
@@ -480,18 +480,21 @@ namespace cstest
 
         private void balance_grid()
         {
-            throw new NotImplementedException();
+            new BalanceGrid(sparta).command(narg, arg);
+            Console.WriteLine("done");
         }
 
         private void create_grid()
         {
             new CreateGrid(sparta).command(narg, arg);
+            Console.WriteLine("done");
         }
 
         private void create_box()
         {
             new CreateBox(sparta).command(narg, arg);
-            
+            Console.WriteLine("done");
+
         }
 
         private bool execute_command()
@@ -624,6 +627,7 @@ namespace cstest
         private void boundary()
         {
             sparta.domain.set_boundary(narg, arg);
+            Console.WriteLine("done");
         }
         private void bound_modify()
         {
@@ -650,6 +654,7 @@ namespace cstest
             sparta.domain.dimension = System.Int32.Parse(arg[1]);
             if (sparta.domain.dimension != 2 && sparta.domain.dimension != 3)
                 sparta.error.all( "Illegal dimension command");
+            Console.WriteLine("done");
         }
         private void dump(){}
         private void dump_modify(){}
@@ -657,6 +662,7 @@ namespace cstest
         private void global()
         {
             sparta.update.global(narg, arg);
+            Console.WriteLine("done");
         }
         private void group(){}
         private void mixture(){}
@@ -682,10 +688,13 @@ namespace cstest
             //update->ranmaster->init(seed);
             sparta.update.ranmaster.init(seed);
 
-
+            Console.WriteLine("done");
             //System.Console.WriteLine("input.seed()");
         }
-        private void species(){}
+        private void species()
+        {
+            sparta.particle.
+        }
         private void stats(){}
         private void stats_modify(){}
         private void stats_style(){}

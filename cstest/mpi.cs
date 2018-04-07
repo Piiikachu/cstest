@@ -65,7 +65,7 @@ namespace cstest
 
         public struct _MPI_Status
         {
-            int MPI_SOURCE;
+            public int MPI_SOURCE;
         }
 
         struct _mpi_double_int
@@ -190,10 +190,11 @@ namespace cstest
             size = stubtypesize(datatype);
             return 0;
         }
-        //public int MPI_Send(const void* buf, int count, MPI_Datatype datatype,int dest, int tag, MPI_Comm comm)
-        //{
-
-        //}
+        public int MPI_Send<T>(ref T buf, int count, MPI_Datatype datatype,int dest, int tag, MPI_Comm comm)
+        {
+            Console.WriteLine("MPI Stub WARNING: Should not send message to self\n");
+            return 0;
+        }
         //public int MPI_Isend(const void* buf, int count, MPI_Datatype datatype,int source, int tag, MPI_Comm comm, MPI_Request* request)
         //{
 
@@ -202,10 +203,18 @@ namespace cstest
         //{
 
         //}
-        //int MPI_Recv(void* buf, int count, MPI_Datatype datatype,
-        //     int source, int tag, MPI_Comm comm, MPI_Status* status){}
-        //int MPI_Irecv(void* buf, int count, MPI_Datatype datatype,
-        //              int source, int tag, MPI_Comm comm, MPI_Request* request){}
+        public int MPI_Recv<T>(ref T buf, int count, MPI_Datatype datatype,
+             int source, int tag, MPI_Comm comm,ref _MPI_Status status)
+        {
+            Console.WriteLine("MPI Stub WARNING: Should not recv message from self\n");
+            return 0;
+        }
+        public int MPI_Irecv<T>(ref T buf, int count, MPI_Datatype datatype,
+                      int source, int tag, MPI_Comm comm, ref MPI_Request request)
+        {
+            Console.WriteLine("MPI Stub WARNING: Should not recv message from self\n");
+            return 0;
+        }
         //int MPI_Wait(MPI_Request* request, MPI_Status* status){}
         //int MPI_Waitall(int n, MPI_Request* request, MPI_Status* status){}
         //int MPI_Waitany(int count, MPI_Request* request, int* index,
@@ -221,8 +230,15 @@ namespace cstest
             comm_out = comm;
             return 0;
         }
-        //int MPI_Comm_dup(MPI_Comm comm, MPI_Comm* comm_out){}
-        //int MPI_Comm_free(MPI_Comm* comm){}
+        public int MPI_Comm_dup(MPI_Comm comm,ref MPI_Comm comm_out)
+        {
+            comm_out = comm;
+            return 0;
+        }
+        public int MPI_Comm_free(ref MPI_Comm comm)
+        {
+            return 0;
+        }
         //MPI_Fint MPI_Comm_c2f(MPI_Comm comm){}
         //MPI_Comm MPI_Comm_f2c(MPI_Fint comm){}
         //int MPI_Comm_group(MPI_Comm comm, MPI_Group* group){}
@@ -268,16 +284,31 @@ namespace cstest
         {
             return 0;
         }
-        public int MPI_Bcast(System.IntPtr buf, int count, MPI_Datatype datatype,int root, MPI_Comm comm)
+        public int MPI_Bcast<T>(ref T buf, int count, MPI_Datatype datatype,int root, MPI_Comm comm)
         {
             return 0;
         }
-        //int MPI_Allreduce(void* sendbuf, void* recvbuf, int count,
-        //                  MPI_Datatype datatype, MPI_Op op, MPI_Comm comm){}
+        public int MPI_Allreduce<T>(ref T sendbuf,ref T recvbuf, int count,MPI_Datatype datatype, MPI_Op op, MPI_Comm comm) where T:struct
+        {
+            int n = count * stubtypesize(datatype);
+
+            //if (sendbuf == MPI_IN_PLACE || recvbuf == MPI_IN_PLACE) return 0;
+            //memcpy(recvbuf, sendbuf, n);
+            recvbuf = sendbuf;
+            return 0;
+        }
         //int MPI_Reduce(void* sendbuf, void* recvbuf, int count,
         //                   MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm){}
-        //int MPI_Scan(void* sendbuf, void* recvbuf, int count,
-        //             MPI_Datatype datatype, MPI_Op op, MPI_Comm comm){}
+        public int MPI_Scan<T>(ref T sendbuf, ref T recvbuf, int count,
+                     MPI_Datatype datatype, MPI_Op op, MPI_Comm comm) where T : struct
+        {
+            int n = count * stubtypesize(datatype);
+
+            //if (sendbuf == MPI_IN_PLACE || recvbuf == MPI_IN_PLACE) return 0;
+            //memcpy(recvbuf, sendbuf, n);
+            recvbuf = sendbuf;
+            return 0;
+        }
         //int MPI_Allgather(void* sendbuf, int sendcount, MPI_Datatype sendtype,
         //                  void* recvbuf, int recvcount, MPI_Datatype recvtype,
         //                  MPI_Comm comm){}
