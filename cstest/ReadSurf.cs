@@ -85,7 +85,7 @@ namespace cstest
             // read and store Points and Lines/Tris sections
 
             parse_keyword(1);
-            if (strcmp(keyword, "Points") != 0)
+            if (!string.Equals(keyword, "Points") )
                 sparta.error.all(
                        "Read_surf did not find points section of surf file");
             read_points();
@@ -93,14 +93,14 @@ namespace cstest
             parse_keyword(0);
             if (dim == 2)
             {
-                if (strcmp(keyword, "Lines") != 0)
+                if (!string.Equals(keyword, "Lines") )
                     sparta.error.all(
                          "Read_surf did not find lines section of surf file");
                 read_lines();
             }
             else
             {
-                if (strcmp(keyword, "Triangles") != 0)
+                if (!string.Equals(keyword, "Triangles") )
                     sparta.error.all(
                            "Read_surf did not find triangles section of surf file");
                 read_tris();
@@ -110,7 +110,7 @@ namespace cstest
 
             if (me == 0)
             {
-                if (compressed) pclose(fp);
+                if (compressed!=0) pclose(fp);
                 else fclose(fp);
             }
 
@@ -201,8 +201,8 @@ namespace cstest
 
         //protected double shortest_line();
         //protected void smallest_tri(double &, double &);
-
-        //protected void open(char*);
+        //todo: it has its own open method
+        protected void open(char*);
         //protected void parse_keyword(int);
         //protected int count_words(char*);
 

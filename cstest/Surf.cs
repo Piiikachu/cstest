@@ -55,9 +55,9 @@ namespace cstest
             double[] norm;         // outward normal to triangle
         };
 
-        public Point pts;               // global list of points
-        public Line lines;              // global list of lines
-        public Tri tris;                // global list of tris
+        public Point[] pts;               // global list of points
+        public Line[] lines;              // global list of lines
+        public Tri[] tris;                // global list of tris
         public int npoint, nline, ntri;    // number of each
           
         public int[] mysurfs;             // indices of surf elements I own
