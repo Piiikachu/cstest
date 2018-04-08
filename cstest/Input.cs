@@ -437,6 +437,7 @@ namespace cstest
             else if (string.Equals(command, "mixture")) mixture();
             else if (string.Equals(command, "react")) react_command();
             else if (string.Equals(command, "react_modify")) react_modify();
+            else if (string.Equals(command, "read_surf")) read_surf();
             else if (string.Equals(command, "region")) region();
             else if (string.Equals(command, "reset_timestep")) reset_timestep();
             else if (string.Equals(command, "restart")) restart();
@@ -476,6 +477,11 @@ namespace cstest
             
 
             // return if command was listed above
+        }
+
+        private void read_surf()
+        {
+            throw new NotImplementedException();
         }
 
         private void balance_grid()
@@ -665,7 +671,13 @@ namespace cstest
             Console.WriteLine("done");
         }
         private void group(){}
-        private void mixture(){}
+        private void mixture()
+        {
+            string[] argss = new string[narg];
+            Array.Copy(arg, 1, argss, 0, narg);
+            sparta.particle.add_mixture(narg, argss);
+            Console.WriteLine("done");
+        }
         private void package(){}
         private void react_command(){}
         private void react_modify(){}
@@ -693,7 +705,9 @@ namespace cstest
         }
         private void species()
         {
-            sparta.particle.
+            sparta.particle.add_species(narg, arg);
+            Console.WriteLine("done");
+
         }
         private void stats(){}
         private void stats_modify(){}

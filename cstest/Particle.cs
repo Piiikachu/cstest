@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using bigint = System.Int64;
@@ -35,7 +36,7 @@ namespace cstest
             public int internaldof;
         };
 
-        public Species[] species;         // list of particle species info
+        public List<Species> species;         // list of particle species info
         public int nspecies;             // # of defined species
 
         public List<Mixture> mixture;
@@ -160,22 +161,35 @@ namespace cstest
         //public void sort_allocate();
         //public void remove_all_from_cell(int);
         //public virtual void grow(int);
-        //public virtual void grow_species();
+        public virtual void grow_species()
+        {
+            species = new List<Species>(maxspecies);
+            //Console.WriteLine("particle.add_species()->grow_species");
+        }
         //public void grow_next();
         //public virtual void pre_weight();
         //public virtual void post_weight();
 
         //public virtual int add_particle(int, int, int, double*, double*, double, double);
         //public int clone_particle(int);
-        public void add_species(int narg, string[] arg)
+        public void add_species(int narg, string[] args)
         {
+            string[] arg = new string[narg];
+            Array.Copy(args, 1, arg, 0, narg);
             int i, j, n; ;
 
             if (narg < 2) sparta.error.all("Illegal species command");
 
             if (me == 0)
             {
-                fp = new FileStream(arg[0], FileMode.Open, FileAccess.Read);
+                try
+                {
+                    fp = new FileStream(arg[0], FileMode.Open, FileAccess.Read);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message.ToString());
+                } 
                 if (fp == null)
                 {
                     string str = string.Format("Cannot open species file {0}", arg[0]);
@@ -192,7 +206,7 @@ namespace cstest
             sparta.mpi.MPI_Bcast(ref nfilespecies, 1, MPI.MPI_INT, 0, sparta.world);
             if (sparta.comm.me != 0)
             {
-                filespecies = new Species[nfilespecies];
+                filespecies = new List<Species>(nfilespecies);
             }
             sparta.mpi.MPI_Bcast(ref filespecies, nfilespecies * Marshal.SizeOf(typeof(Species)), MPI.MPI_BYTE, 0, sparta.world);
 
@@ -241,6 +255,8 @@ namespace cstest
             {
                 while (nspecies + newspecies > maxspecies) maxspecies += DELTASPECIES;
                 grow_species();
+
+                //Console.ReadKey();
             }
             // extract info on user-requested species from file species list
             // add new species to default mixtures "all" and "species"
@@ -258,8 +274,9 @@ namespace cstest
                 if (j == nfilespecies)
                     sparta.error.all("Species ID does not appear in species file");
                 //memcpy(&species[nspecies], &filespecies[j], sizeof(Species));
-                species[nspecies] = filespecies[j];
+                species.Add( filespecies[j]);
                 nspecies++;
+
 
                 mixture[imix_all].add_species_default(species[nspecies - 1].id);
                 mixture[imix_species].add_species_default(species[nspecies - 1].id);
@@ -284,6 +301,7 @@ namespace cstest
 
                 }
                 imix = nmixture;
+                nmixture++;
                 mixture.Add(new Mixture(sparta, arg[0]));
             }
 
@@ -389,7 +407,7 @@ namespace cstest
         protected int maxsort;              // max # of particles next can hold
         protected int maxspecies;           // max size of species list
 
-        protected Species[] filespecies;     // list of species read from file
+        protected List<Species> filespecies;     // list of species read from file
         protected int nfilespecies;         // # of species read from file
         protected int maxfilespecies;       // max size of filespecies list
         protected FileStream fp;                 // species file pointer
@@ -422,8 +440,79 @@ namespace cstest
 
         private void read_species_file()
         {
-            System.Console.WriteLine("particle.read_species_file()");
+            using (StreamReader sr = new StreamReader(fp))
+            {
+                int NWORDS = 10;
+                string line;
+                while ((line=sr.ReadLine())!=null)
+                {
+                    ParseSpecies(line);
+                    
+                }
+
+            }
+
         }
+
+        private void ParseSpecies(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                return;
+            }
+            if (line.StartsWith("#"))
+            {
+                return;
+            }
+
+            string[] words = line.Split();
+            List<string> wordlist = new List<string>();
+            foreach (string word in words)
+            {
+                if (!string.IsNullOrWhiteSpace(word))
+                {
+                    wordlist.Add(word);
+                }
+            }
+
+            if (wordlist.Count!=10)
+            {
+                sparta.error.one("Incorrect line format in species file");
+            }
+
+            if (nfilespecies==maxfilespecies)
+            {
+                maxfilespecies += DELTASPECIES;
+                filespecies = new List<Species>(maxfilespecies);
+            }
+            Species fsp = new Species();
+
+            if (wordlist[0].Length+1>16)
+            {
+                sparta.error.one("Invalid species ID in species file");
+            }
+            fsp.id = string.Copy(wordlist[0]);
+            fsp.molwt = double.Parse(wordlist[1]);
+            fsp.mass= double.Parse(wordlist[2]);
+            fsp.rotdof = int.Parse(wordlist[3]);
+            fsp.rotrel = double.Parse(wordlist[4]);
+            fsp.vibdof = int.Parse(wordlist[5]);
+            fsp.vibrel = double.Parse(wordlist[6]);
+            fsp.vibtemp = double.Parse(wordlist[7]);
+            fsp.specwt = double.Parse(wordlist[8]);
+            fsp.charge= double.Parse(wordlist[9]);
+            if (fsp.rotdof > 0 || fsp.vibdof > 0)
+            {
+                fsp.internaldof = 1;
+            }
+            else
+            {
+                fsp.internaldof = 0;
+            }
+            filespecies.Add(fsp);
+            nfilespecies++;
+        }
+
         private int wordcount(string line, ref string[] words)
         {
             //int nwords = 0;

@@ -104,16 +104,23 @@ namespace cstest
 
             // add_species() processes list of species
             // params() processes remaining optional keywords
-            string[] arg1 = new string[30];
-            string[] arg2 = new string[30];
-            string[] arg3 = new string[30];
+            string[] arg1;
+            string[] arg2;
+            string[] arg3;
             if (arg.Length>1)
             {
-                Array.Copy(arg, 1, arg1, 0, 30);
-                Array.Copy(arg, iarg, arg2, 0, 30);
-                Array.Copy(arg, iarg + copyarg, arg3, 0, 30);
+                arg1 = new string[arg.Length - 1];
+                arg2 = new string[arg.Length - iarg];
+                arg3 = new string[arg.Length - iarg - copyarg];
+                Array.Copy(arg, 1, arg1, 0, arg1.Length);
+                Array.Copy(arg, iarg, arg2, 0, arg2.Length );
+                Array.Copy(arg, iarg + copyarg, arg3, 0, arg3.Length);
                 add_species(nsp, arg1);
                 myparams(narg - iarg, arg2);
+            }
+            else
+            {
+                arg3 = new string[arg.Length];
             }
 
 
@@ -130,7 +137,18 @@ namespace cstest
         }
         //public void init();
         //public int init_fraction(int[], double[], double[], double[]);
-        //public void add_species_default(char*);
+        public void add_species_default(string name)
+        {
+            int index = sparta.particle.find_species(name);
+            if (nspecies == maxspecies) allocate();
+            species[nspecies] = index;
+
+            if (all_default!=0 && ngroup == 0) add_group("all");
+            if (species_default!=0) add_group(name);
+            mix2group[nspecies] = ngroup - 1;
+
+            nspecies++;
+        }
         public int find_group(string idgroup)
         {
             for (int i = 0; i < ngroup; i++)

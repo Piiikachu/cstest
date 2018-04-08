@@ -73,6 +73,7 @@
     <Compile Include="Random_Mars.cs" />
     <Compile Include="RCB.cs" />
     <Compile Include="React.cs" />
+    <Compile Include="ReadSurf.cs" />
     <Compile Include="Region.cs" />
     <Compile Include="SPARTA.cs" />
     <Compile Include="Stats.cs" />
