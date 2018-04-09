@@ -4,3 +4,9 @@ E:\Work\Linux\cstest\cstest\bin\Debug\cstest.exe
 E:\Work\Linux\cstest\cstest\bin\Debug\cstest.pdb
 E:\Work\Linux\cstest\cstest\obj\Debug\cstest.exe
 E:\Work\Linux\cstest\cstest\obj\Debug\cstest.pdb
+D:\Project\sparta\cstest\cstest\bin\Debug\cstest.exe.config
+D:\Project\sparta\cstest\cstest\bin\Debug\cstest.exe
+D:\Project\sparta\cstest\cstest\bin\Debug\cstest.pdb
+D:\Project\sparta\cstest\cstest\obj\Debug\cstest.csprojResolveAssemblyReference.cache
+D:\Project\sparta\cstest\cstest\obj\Debug\cstest.exe
+D:\Project\sparta\cstest\cstest\obj\Debug\cstest.pdb

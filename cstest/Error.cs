@@ -194,6 +194,7 @@ namespace cstest
             }
 
             sparta.mpi.MPI_Abort(sparta.world, 1);
+            System.Console.ReadKey();
         }
 
 

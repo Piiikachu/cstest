@@ -160,8 +160,63 @@ namespace cstest
             // all other lines must have at least NWORDS 
 
 
-            //todo: readvssfile()
-            Console.WriteLine("read vss file");
+            int NWORDS = 5;
+            if (relaxflag == (int)Enum2.VARIABLE) NWORDS = 9;
+            string[] words;
+            string line;
+            int isp;
+            using (StreamReader sr=new StreamReader(fp))
+            {
+                
+                while ((line=sr.ReadLine()) != null)
+                {
+                    if (line.StartsWith("#"))
+                    {
+                        continue;
+                    }
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        continue;
+                    }
+                    words = line.Split();
+                    List<string> wordslist = new List<string>();
+                    foreach (string word in words)
+                    {
+                        if (!string.IsNullOrWhiteSpace(word))
+                        {
+                            wordslist.Add(word);
+                        }
+                    }
+                    if (wordslist.Count != NWORDS)
+                    {
+                        sparta.error.one("Incorrect line format in VSS parameter file");
+                    }
+                    words = wordslist.ToArray<string>();
+                    isp = sparta.particle.find_species(words[0]);
+                    if (isp < 0) continue;
+                    Params mparam = new Params();
+                    mparam = mparams[isp];
+                    mparam.diam = double.Parse(words[1]);
+                    mparam.omega = double.Parse(words[2]);
+                    mparam.tref = double.Parse(words[3]);
+                    mparam.alpha = double.Parse(words[4]);
+                    mparams[isp] = mparam;
+                    if (relaxflag == (int)Enum2.VARIABLE)
+                    {
+                        mparam.rotc1 = double.Parse(words[5]);
+                        mparam.rotc2 = double.Parse(words[6]);
+                        mparam.rotc3 = (MyConst.MY_PI + MyConst.MY_PI2 * MyConst.MY_PI2) * mparam.rotc2;
+                        mparam.rotc2 = (MyConst.MY_PI * MyConst.MY_PIS / 2.0) * Math.Sqrt(mparam.rotc2);
+                        mparam.vibc1 = double.Parse(words[7]);
+                        mparam.vibc2 = double.Parse(words[8]);
+                        mparams[isp] = mparam;
+                    }
+
+
+                }
+            }
+
+
         }
         //protected int wordcount(char*);
         //protected void wordparse(int, char*, char**);
