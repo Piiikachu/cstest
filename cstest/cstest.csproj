@@ -79,6 +79,7 @@
     <Compile Include="Stats.cs" />
     <Compile Include="Surf.cs" />
     <Compile Include="SurfCollide.cs" />
+    <Compile Include="SurfCollideDiffuse.cs" />
     <Compile Include="SurfReact.cs" />
     <Compile Include="Timer.cs" />
     <Compile Include="Universe.cs" />

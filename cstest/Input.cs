@@ -497,6 +497,7 @@ namespace cstest
         private void read_surf()
         {
             new ReadSurf(sparta).command(narg, arg);
+            Console.WriteLine("done");
         }
 
         private void balance_grid()
@@ -727,8 +728,16 @@ namespace cstest
         private void stats(){}
         private void stats_modify(){}
         private void stats_style(){}
-        private void surf_collide(){}
-        private void surf_modify(){}
+        private void surf_collide()
+        {
+            sparta.surf.add_collide(narg, arg);
+            Console.WriteLine("done");
+        }
+        private void surf_modify()
+        {
+            sparta.surf.modify_params(narg, arg);
+            Console.WriteLine("done");
+        }
         private void surf_react(){}
         private void timestep(){}
         private void uncompute(){}

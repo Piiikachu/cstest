@@ -1,4 +1,5 @@
 ﻿
+using System;
 using System.Collections.Generic;
 using bigint = System.Int64;
 namespace cstest
@@ -73,6 +74,7 @@ namespace cstest
 
         public Surf(SPARTA sparta)
         {
+            this.sparta = sparta;
             exist = 0;
             surf_collision_check = 1;
 
@@ -106,38 +108,191 @@ namespace cstest
         }
 
 
-        //void modify_params(int, char**);
-        //void init();
-        //int nelement();
-        //void setup_surf();
+        public void modify_params(int narg, string[] args)
+        {
+            string[] arg = new string[narg];
+            Array.Copy(args, 1, arg, 0, narg);
+            if (narg < 2) sparta.error.all("Illegal surf_modify command");
+            int igroup = find_group(arg[0]);
+            if (igroup < 0) sparta.error.all("Surf_modify surface group is not defined");
+            int groupbit = bitmask[igroup];
 
-        //void compute_line_normal(int, int);
-        //void compute_tri_normal(int, int);
-        //void quad_corner_point(int, double*, double*, double*);
-        //void hex_corner_point(int, double*, double*, double*);
-        //double line_size(int);
-        //double axi_line_size(int);
-        //double tri_size(int, double &);
+            int iarg = 1;
+            while (iarg < narg)
+            {
+                switch (arg[iarg])
+                {
+                    case "collide":
+                        if (iarg + 2 > narg) sparta.error.all("Illegal surf_modify command");
 
-        //void check_watertight_2d(int, int);
-        //void check_watertight_3d(int, int);
-        //void check_point_inside(int, int);
+                        int isc = find_collide(arg[iarg + 1]);
+                        if (isc < 0) sparta.error.all("Could not find surf_modify sc-ID");
 
-        //void add_collide(int, char**);
-        //int find_collide(const char*);
-        //void add_react(int, char**);
-        //int find_react(const char*);
+                        // set surf collision model for each surf in surface group
 
-        //void group(int, char**);
-        //int add_group(const char*);
-        //int find_group(const char*);
+                        if (sparta.domain.dimension == 2)
+                        {
+                            for (int i = 0; i < nline; i++)
+                                if (lines[i].mask!=0 & groupbit!=0)
+                                {
+                                    Line line = new Line();
+                                    line = lines[i];
+                                    line.isc = isc;
+                                    lines[i] = line;
+                                }
+                        }
+                        if (sparta.domain.dimension == 3)
+                        {
+                            for (int i = 0; i < ntri; i++)
+                                if (tris[i].mask!=0 & groupbit!=0)
+                                {
+                                    Tri tri = new Tri();
+                                    tri = tris[i];
+                                    tri.isc = isc;
+                                    tris[i] = tri;
+                                }
+                        }
 
-        //void collate_vector(int, int*, double*, int, double*);
-        //void collate_array(int, int, int*, double**, double**);
+                        iarg += 2;
+                        break;
+                    case "react":
+                        if (iarg + 2 > narg) sparta.error.all("Illegal surf_modify command");
 
-        //void write_restart(FILE*);
-        //void read_restart(FILE*);
-        //bigint memory_usage();
+                        int isr;
+                        if (string.Equals(arg[iarg + 1], "none")) isr = -1;
+                        else
+                        {
+                            isr = find_react(arg[iarg + 1]);
+                            if (isr < 0) sparta.error.all("Could not find surf_modify sr-ID");
+                        }
+
+                        // set surf reaction model for each surf in surface group
+
+                        if (sparta.domain.dimension == 2)
+                        {
+                            for (int i = 0; i < nline; i++)
+                                if (lines[i].mask!=0 & groupbit!=0)
+                                {
+                                    Line line = new Line();
+                                    line = lines[i];
+                                    line.isr = isr;
+                                    lines[i] = line;
+                                    
+                                }
+                        }
+                        if (sparta.domain.dimension == 3)
+                        {
+                            for (int i = 0; i < ntri; i++)
+                                if (tris[i].mask != 0 & groupbit != 0)
+                                {
+                                    Tri tri = new Tri();
+                                    tri = tris[i];
+                                    tri.isr = isr;
+                                    tris[i] = tri;
+                                }
+                        }
+
+                        iarg += 2;
+                        break;
+                    default:
+                        sparta.error.all("Illegal surf_modify command");
+                        break;
+                }
+            }
+        }
+        //public void init();
+        //public int nelement();
+        //public void setup_surf();
+
+        //public void compute_line_normal(int, int);
+        //public void compute_tri_normal(int, int);
+        //public void quad_corner_point(int, double*, double*, double*);
+        //public void hex_corner_point(int, double*, double*, double*);
+        //public double line_size(int);
+        //public double axi_line_size(int);
+        //public double tri_size(int, double &);
+
+        //public void check_watertight_2d(int, int);
+        //public void check_watertight_3d(int, int);
+        //public void check_point_inside(int, int);
+        private SPARTA sparta;
+
+        public void add_collide(int narg, string[] args)
+        {
+            string[] arg = new string[narg];
+            Array.Copy(args, 1, arg, 0, narg);
+            if (narg < 2) sparta.error.all("Illegal surf_collide command");
+
+            // error check
+
+            for (int i = 0; i < nsc; i++)
+                if (string.Equals(arg[0], sc[i].id))
+                    sparta.error.all("Reuse of surf_collide ID");
+
+            // extend SurfCollide list if necessary
+
+            if (nsc == maxsc)
+            {
+                maxsc += DELTA;
+                sc = new List<SurfCollide>(maxsc);
+            }
+            // create new SurfCollide class
+
+            if (sparta.suffix_enable!=0)
+            {
+                if (sparta.suffix!=null)
+                {
+                    string estyle = string.Format("{0}{1}", arg[1], sparta.suffix);
+                }
+            }
+            switch (arg[1])
+            {
+                case "diffuse":
+                    sc.Add(new SurfCollideDiffuse(sparta, narg, arg));
+                    break;
+                default:
+                    Console.WriteLine("Unrecognized surf_collide style");
+                    break;
+            }
+
+            nsc++;
+
+        }
+        public int find_collide(string id)
+        {
+            int isc;
+            for (isc = 0; isc < nsc; isc++)
+                if (id.Equals(sc[isc].id)) break;
+            if (isc == nsc) return -1;
+            return isc;
+        }
+        //public void add_react(int, char**);
+        public int find_react(string id)
+        {
+            int isr;
+            for (isr = 0; isr < nsr; isr++)
+                if (string.Equals(id, sr[isr].id)) break;
+            if (isr == nsr) return -1;
+            return isr;
+        }
+
+        //public void group(int, char**);
+        //public int add_group(const char*);
+        public int find_group(string id)
+        {
+            int igroup;
+            for (igroup = 0; igroup < ngroup; igroup++)
+                if (string.Equals(id, gnames[igroup])) break;
+            if (igroup == ngroup) return -1;
+            return igroup;
+        }
+
+        //public void collate_vector(int, int*, double*, int, double*);
+        //public void collate_array(int, int, int*, double**, double**);
+
+        //public void write_restart(FILE*);
+        //public void read_restart(FILE*);
+        //public bigint memory_usage();
 
         //private:
         private int maxsc;                // max # of models in sc
