@@ -657,6 +657,35 @@ namespace cstest
         }
         private void collide_command()
         {
+            string[] argss = new string[narg];
+            Array.Copy(arg, 1, argss, 0, narg);
+
+            if (narg < 1) sparta.error.all("Illegal collide command");
+
+            if (sparta.suffix_enable!=0)
+            {
+                if (sparta.suffix!=null)
+                {
+                    string estyle = string.Format("{0}/{1}", argss[0], sparta.suffix);
+                }
+            }
+
+            if (argss[0].Equals("none"))
+            {
+                sparta.collide = null;
+            }
+
+            switch (argss[0])
+            {
+                case "vss":
+                    sparta.collide = new CollideVSS(sparta, narg, argss);
+                    break;
+                default:
+                    break;
+            }
+
+
+
 
         }
         private void collide_modify()

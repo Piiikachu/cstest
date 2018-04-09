@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="BalanceGrid.cs" />
     <Compile Include="Collide.cs" />
+    <Compile Include="CollideVSS.cs" />
     <Compile Include="Comm.cs" />
     <Compile Include="Compute.cs" />
     <Compile Include="CreateBox.cs" />

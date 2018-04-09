@@ -1,6 +1,182 @@
-﻿namespace cstest
+﻿using System.Collections.Generic;
+using bigint = System.Int64;
+namespace cstest
 {
     public class Collide
     {
+        public const int DELTAPART = 128;
+
+        enum Enum1{ NONE, DISCRETE, SMOOTH };       // several files
+        enum Enum2{ PKEEP, PINSERT, PDONE, PDISCARD, PENTRY, PEXIT, PSURF };   // several files
+
+        public const int DELTAGRID = 1000;        // must be bigger than split cells per cell
+        public const int DELTADELETE = 1024;
+        public const int DELTAELECTRON = 128;
+
+        public const double BIG = 1.0e20;
+
+        public string style;
+        public int rotstyle;       // none/smooth rotational modes
+        public int vibstyle;       // none/discrete/smooth vibrational modes
+        public int nearcp;         // 1 for near neighbor collisions
+        public int nearlimit;      // limit on neighbor serach for near neigh collisions
+         
+        public int ncollide_one, nattempt_one, nreact_one;
+        public bigint ncollide_running, nattempt_running, nreact_running;
+
+        public Collide(SPARTA sparta, int narg, string[] arg)
+        {
+            int n = arg[0].Length + 1;
+            style = string.Copy(arg[0]);
+
+            n = arg[1].Length + 1;
+            mixID = string.Copy(arg[1]);
+
+            random = new RanPark(sparta.update.ranmaster.uniform());
+            double seed = sparta.update.ranmaster.uniform();
+            random.reset(seed, sparta.comm.me, 100);
+
+            ngroups = 0;
+
+            npmax = 0;
+            plist = null;
+
+            nglocal = nglocalmax = 0;
+
+            ngroup = null;
+            maxgroup = null;
+            glist = null;
+            gpair = null;
+
+            maxdelete = 0;
+            dellist = null;
+
+            vre_first = 1;
+            vre_start = 1;
+            vre_every = 0;
+            remainflag = 1;
+            vremax = null;
+            vremax_initial = null;
+            remain = null;
+            rotstyle =(int)Enum1.SMOOTH;
+            vibstyle = (int)Enum1.NONE;
+            nearcp = 0;
+            nearlimit = 10;
+
+            recomb_ijflag = null;
+
+            ambiflag = 0;
+            maxelectron = 0;
+            elist = null;
+        }
+        //public virtual void init();
+        //public void modify_params(int, char**);
+        //public void reset_vremax();
+        //public virtual void collisions();
+
+        //public virtual double vremax_init(int, int) = 0;
+        //public virtual double attempt_collision(int, int, double) = 0;
+        //public virtual double attempt_collision(int, int, int, double) = 0;
+        //public virtual int test_collision(int, int, int,
+        //                Particle::OnePart*, Particle::OnePart*) = 0;
+        //public virtual void setup_collision(Particle::OnePart*, Particle::OnePart*) = 0;
+        //public virtual int perform_collision(Particle::OnePart*&, Particle::OnePart*&,
+        //                               Particle::OnePart*&) = 0;
+         
+        //public virtual double extract(int, const char*) {return 0.0;
+
+
+        //public virtual int pack_grid_one(int, char*, int);
+        //public virtual int unpack_grid_one(int, char*);
+        //public virtual void compress_grid();
+        //public virtual void adapt_grid();
+
+        protected int npmax;          // max # of particles in plist
+        protected int[] plist;         // list of particles in a single group
+         
+        protected int nglocal;        // current size of per-cell arrays
+        protected int nglocalmax;     // max allocated size of per-cell arrays
+         
+        protected int ngroups;        // # of groups
+        protected int[] ngroup;        // # of particles in one cell of each group
+        protected int[] maxgroup;      // max # of glist indices allocated per group
+        protected int[,] glist;        // indices of particles in one cell of each group
+         
+        protected int npair;          // # of group pairs to do collisions for
+        protected int[,] gpair;        // Nx3 list of species pairs to do collisions for
+                             // 0 = igroup, 1 = jgroup, 2 = # of attempt collisions
+         
+        protected int max_nn;             // allocated size of nn_last_partner
+        protected int[] nn_last_partner;   // index+1 of last collision partner for each particle
+                                 // 0 = no collision yet (on this step)
+        protected int[] nn_last_partner_igroup;   // ditto for igroup and jgroup particles
+        protected int[] nn_last_partner_jgroup;
+         
+        protected int ndelete, maxdelete;      // # of particles removed by chemsitry
+        protected int[] dellist;               // list of particle indices to delete
+
+        string mixID;               // ID of mixture to use for groups
+        Mixture  mixture;    // ptr to mixture
+        RanPark  random;     // RNG for collision generation
+
+        int vre_first;      // 1 for first run after collision style is defined
+        int vre_start;      // 1 if reset vre params at start of each run
+        int vre_every;      // reset vre params every this many steps
+        bigint vre_next;    // next timestep to reset vre params on
+        int remainflag;     // 1 if remain defined, else use random fraction
+
+        double[,,] vremax;   // max relative velocity, per cell, per group pair
+        double[,,] remain;   // collision number remainder, per cell, per group pair
+        double[,] vremax_initial;   // initial vremax value, per group pair
+
+        // recombination reactions
+
+        int recombflag;               // 1 if recomb reactions enabled, 0 if not
+        double recomb_boost_inverse;  // recombination rate boost factor from React
+        int[,] recomb_ijflag;          // 1 if species I,J have recomb reaction(s)
+
+        int oldgroups;         // pass from parent to child class
+        int copymode;          // 1 if copy of class (prevents deallocation of
+                               //  base class when child copy is destroyed)
+        int kokkosable;        // 1 if collide method supports Kokkos
+
+        // ambipolar approximation data structs
+
+        int ambiflag;       // 1 if ambipolar option is enabled
+        int ambispecies;    // species for ambipolar electrons
+        int index_ionambi;  // 2 custom ambipolar vectors
+        int index_velambi;
+        int[] ions;          // ptr to fix ambipolar list of ions
+
+        int nelectron;                // # of ambipolar electrons in elist
+        int maxelectron;              // max # elist can hold
+        List<Particle.OnePart> elist;     // list of ambipolar electrons
+                                      // for one grid cell or pair of groups in cell
+
+        //inline void addgroup(int igroup, int n)
+        //{
+        //    if (ngroup[igroup] == maxgroup[igroup])
+        //    {
+        //        maxgroup[igroup] += DELTAPART;
+        //        memory->grow(glist[igroup], maxgroup[igroup], "collide:grouplist");
+        //    }
+        //    glist[igroup][ngroup[igroup]++] = n;
+        //}
+
+        //template<int> void collisions_one();
+        //template<int> void collisions_group();
+        //void collisions_one_ambipolar();
+        //void collisions_group_ambipolar();
+        //void ambi_reset(int, int, int, int, Particle::OnePart*, Particle::OnePart*,
+        //                Particle::OnePart*, int[]);
+        //void ambi_check();
+        //void grow_percell(int);
+
+        //int find_nn(int, int);
+        //int find_nn_group(int, int[], int, int[], int[], int[]);
+        //void realloc_nn(int, int[]&);
+        //void set_nn(int);
+        //void set_nn_group(int);
+
     }
 }
