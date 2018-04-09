@@ -684,7 +684,7 @@ namespace cstest
                     break;
             }
 
-
+            Console.WriteLine("done");
 
 
         }
@@ -709,7 +709,13 @@ namespace cstest
         }
         private void dump(){}
         private void dump_modify(){}
-        private void fix(){}
+        private void fix()
+        {
+            string[] argss = new string[narg];
+            Array.Copy(arg, 1, argss, 0, narg);
+            sparta.modify.add_fix(narg, argss);
+            
+        }
         private void global()
         {
             sparta.update.global(narg, arg);
