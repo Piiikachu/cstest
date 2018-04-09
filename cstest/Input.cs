@@ -273,7 +273,7 @@ namespace cstest
 
         public double numeric(string str)    // arg checking
         {
-            if (!string.IsNullOrEmpty(str))
+            if (string.IsNullOrEmpty(str))
                 sparta.error.all("Expected floating point parameter in input script or data file");
             int n = str.Length;
             if (n == 0)
@@ -289,7 +289,22 @@ namespace cstest
 
             return double.Parse(str);
         }
-        //public int inumeric(const char*, int, char*);
+        public int inumeric(string str)
+        {
+            if (string.IsNullOrWhiteSpace(str))
+               sparta.error.all("Expected integer parameter in input script or data file");
+            int n = str.Length;
+            if (n == 0)
+                sparta.error.all("Expected integer parameter in input script or data file");
+
+            for (int i = 0; i < n; i++)
+            {
+                if (char.IsDigit(str[i]) || str[i] == '-' || str[i] == '+') continue;
+                sparta.error.all("Expected integer parameter in input script or data file");
+            }
+
+            return int.Parse(str);
+        }
         //public bigint bnumeric(const char*, int, char*);
         //public void bounds(char*, int, int &, int &, int nmin = 1);
         //public int count_words(char*);
@@ -481,7 +496,7 @@ namespace cstest
 
         private void read_surf()
         {
-            throw new NotImplementedException();
+            new ReadSurf(sparta).command(narg, arg);
         }
 
         private void balance_grid()

@@ -32,32 +32,32 @@ namespace cstest
 
         public struct Point
         {
-            double[] x;
+            public double[] x;
         };
 
         public struct Line
         {
-            int type, mask;          // type and mask of the element
-            int isc, isr;            // index of surface collision and reaction models
-                                     // -1 if unassigned
-            int p1, p2;              // indices of points in line segment
-                                     // rhand rule: Z x (p2-p1) = outward normal
-            double[] norm;         // outward normal to line segment
+            public int type, mask;          // type and mask of the element
+            public int isc, isr;            // index of surface collision and reaction models
+                                      // -1 if unassigned
+            public int p1, p2;              // indices of points in line segment
+                                      // rhand rule: Z x (p2-p1) = outward normal
+            public double[] norm;         // outward normal to line segment
         };
 
         public struct Tri
         {
-            int type, mask;          // type and mask of the element
-            int isc, isr;            // index of surface collision and reaction models
-                                     // -1 if unassigned
-            int p1, p2, p3;           // indices of points in triangle
-                                      // rhand rule: (p2-p1) x (p3-p1) = outward normal
-            double[] norm;         // outward normal to triangle
+            public int type, mask;          // type and mask of the element
+            public int isc, isr;            // index of surface collision and reaction models
+                                      // -1 if unassigned
+            public int p1, p2, p3;           // indices of points in triangle
+                                       // rhand rule: (p2-p1) x (p3-p1) = outward normal
+            public double[] norm;         // outward normal to triangle
         };
 
-        public Point[] pts;               // global list of points
-        public Line[] lines;              // global list of lines
-        public Tri[] tris;                // global list of tris
+        public List<Point> pts;               // global list of points
+        public List<Line> lines;              // global list of lines
+        public List<Tri> tris;                // global list of tris
         public int npoint, nline, ntri;    // number of each
           
         public int[] mysurfs;             // indices of surf elements I own
