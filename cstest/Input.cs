@@ -462,6 +462,7 @@ namespace cstest
             else if (string.Equals(command, "region")) region();
             else if (string.Equals(command, "reset_timestep")) reset_timestep();
             else if (string.Equals(command, "restart")) restart();
+            else if (string.Equals(command, "run")) run();
             else if (string.Equals(command, "seed")) seed();
             else if (string.Equals(command, "species")) species();
             else if (string.Equals(command, "stats")) stats();
@@ -498,6 +499,11 @@ namespace cstest
             
 
             // return if command was listed above
+        }
+
+        private void run()
+        {
+            new 
         }
 
         private void read_surf()
@@ -774,7 +780,8 @@ namespace cstest
         private void stats_modify(){}
         private void stats_style()
         {
-            sparta.output.
+            sparta.output.create_stats(narg, arg);
+            Console.WriteLine("done");
         }
         private void surf_collide()
         {

@@ -70,10 +70,10 @@ namespace cstest
             public double evib;            // vibrational energy
         }
 
-        bigint nglobal;           // global # of particles
-        int nlocal;               // # of particles I own
-        int maxlocal;             // max # particles list can hold
-        OnePart[] particles;       // list of particles I own
+        public bigint nglobal;           // global # of particles
+        public int nlocal;               // # of particles I own
+        public int maxlocal;             // max # particles list can hold
+        public OnePart[] particles;       // list of particles I own
 
         // currently stored in grid.h for every cell, whether I own it or not
         // not sure why storing it here is slower
@@ -81,29 +81,29 @@ namespace cstest
         //int *cellcount;           // count of particles in each grid cell I own
         //int *first;               // index of first particle in each grid cell
 
-        int[] next;                // index of next particle in each grid cell
+        public int[] next;                // index of next particle in each grid cell
 
         // extra custom vectors/arrays for per-particle data
         // ncustom > 0 if there are any extra arrays
         // custom attributes are created by various commands
         // these variables are public, others below are private
 
-        int ncustom;              // # of custom attributes, some may be deleted
-        int[] etype;               // type = INT/DOUBLE of each attribute
-        int[] esize;               // size = 0 for vector, N for array columns
-        int[] ewhich;              // index into eivec,eiarray,edvec,edarray for data
-
-        int[,] eivec;              // pointer to each integer vector
-        int[,,] eiarray;           // pointer to each integer array
-        double[,] edvec;           // pointer to each double vector
-        double[,,] edarray;        // pointer to each double array
-
-        // restart buffers, filled by read_restart
-
-        int nlocal_restart;
-        string particle_restart;
-
-        int copy, copymode;        // 1 if copy of class (prevents deallocation of
+        public int ncustom;              // # of custom attributes, some may be deleted
+        public int[] etype;               // type = INT/DOUBLE of each attribute
+        public int[] esize;               // size = 0 for vector, N for array columns
+        public int[] ewhich;              // index into eivec,eiarray,edvec,edarray for data
+         
+        public int[,] eivec;              // pointer to each integer vector
+        public int[,,] eiarray;           // pointer to each integer array
+        public double[,] edvec;           // pointer to each double vector
+        public double[,,] edarray;        // pointer to each double array
+         
+         // restart buffers, filled by read_restart
+         
+        public int nlocal_restart;
+        public string particle_restart;
+        
+        public int copy, copymode;        // 1 if copy of class (prevents deallocation of
                                    //  base class when child copy is destroyed)
 
         // methods

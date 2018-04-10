@@ -136,7 +136,51 @@ namespace cstest
             int n = style.Length + 1;
             unit_style=string.Copy(style);
         }
-        //      public virtual void init();
+        public virtual void init()
+        {
+            // init the Update class if performing a run, else just return
+            // only set first_update if a run is being performed
+
+            if (runflag == 0) return;
+            first_update = 1;
+
+            // choose the appropriate move method
+
+            if (sparta.domain.dimension == 3)
+            {
+                if (sparta.surf.exist!=0) moveptr = Update.move < 3,1 >;
+    else moveptr = &Update::move < 3,0 >;
+            }
+            else if (domain->axisymmetric)
+            {
+                if (surf->exist) moveptr = &Update::move < 1,1 >;
+    else moveptr = &Update::move < 1,0 >;
+            }
+            else if (domain->dimension == 2)
+            {
+                if (surf->exist) moveptr = &Update::move < 2,1 >;
+    else moveptr = &Update::move < 2,0 >;
+            }
+
+            // check gravity vector
+
+            if (domain->dimension == 2 && gravity[2] != 0.0)
+                error->all(FLERR, "Gravity in z not allowed for 2d");
+            if (domain->axisymmetric && gravity[1] != 0.0)
+                error->all(FLERR, "Gravity in y not allowed for axi-symmetric model");
+
+            // moveperturb method is set if particle motion is perturbed
+
+            moveperturb = NULL;
+            if (gravity[0] != 0.0 || gravity[1] != 0.0 || gravity[2] != 0.0)
+            {
+                if (domain->dimension == 3) moveperturb = &Update::gravity3d;
+                if (domain->dimension == 2) moveperturb = &Update::gravity2d;
+            }
+
+            if (moveperturb) perturbflag = 1;
+            else perturbflag = 0;
+        }
         //      public virtual void setup();
         //      public virtual void run(int);
         public void global(int nnarg,string[] arg)

@@ -1,6 +1,8 @@
-﻿using bigint = System.Int64;
+﻿using System.Collections.Generic;
+using bigint = System.Int64;
 namespace cstest
 {
+    public delegate void ComputeHandler();
     public class Stats
     {
         // customize a new keyword by adding to this list:
@@ -72,6 +74,11 @@ namespace cstest
             format_float_user = null;
             format_int_user = null;
             format_bigint_user = null;
+
+
+
+
+
         }
 
         //public void Init()
@@ -181,6 +188,148 @@ namespace cstest
         //public void modify_params(int, string[]);
         public void set_fields(int narg,string[] arg)
         {
+            //deallocate();
+
+            nfield = narg;
+            Allocate();
+            nfield = 0;
+            foreach (string item in arg)
+            {
+                switch (item)
+                {
+                    case "step":
+                        addfield("Step", compute_step, (int)Enum1.BIGINT);
+                        break;
+                    //case "elapsed":
+                    //    addfield("Elapsed", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "elaplong":
+                    //    addfield("elaplong", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "dt":
+                    //    addfield("dt", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    case "cpu":
+                        addfield("cpu", compute_cpu, (int)Enum1.BIGINT);
+                        break;
+                    //case "tpcpu":
+                    //    addfield("tpcpu", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "spcpu":
+                    //    addfield("spcpu", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "wall":
+                    //    addfield("wall", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    case "np":
+                        addfield("np", compute_np, (int)Enum1.BIGINT);
+                        break;
+                    //case "ntouch":
+                    //    addfield("ntouch", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "ncomm":
+                    //    addfield("ncomm", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nbound":
+                    //    addfield("nbound", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    case "nscoll":
+                        addfield("nscoll", compute_nscoll, (int)Enum1.BIGINT);
+                        break;
+                    case "nscheck":
+                        addfield("nscheck", compute_nscheck, (int)Enum1.BIGINT);
+                        break;
+                    case "ncoll":
+                        addfield("ncoll", compute_ncoll, (int)Enum1.BIGINT);
+                        break;
+                    case "nattempt":
+                        addfield("nattempt", compute_nattempt, (int)Enum1.BIGINT);
+                        break;
+                    //case "nreact":
+                    //    addfield("nreact", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nsreact":
+                    //    addfield("nsreact", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "npave":
+                    //    addfield("npave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "ntouchave":
+                    //    addfield("ntouchave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "ncommave":
+                    //    addfield("ncommave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nboundave":
+                    //    addfield("nboundave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nexitave":
+                    //    addfield("nexitave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nscollave":
+                    //    addfield("nscollave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nscheckave":
+                    //    addfield("nscheckave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "ncollave":
+                    //    addfield("ncollave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nattemptave":
+                    //    addfield("nattemptave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nreactave":
+                    //    addfield("nreactave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nsreactave":
+                    //    addfield("nsreactave", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nparent":
+                    //    addfield("nparent", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nchild":
+                    //    addfield("nchild", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "nsplit":
+                    //    addfield("nsplit", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "vol":
+                    //    addfield("vol", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "lx":
+                    //    addfield("lx", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "ly":
+                    //    addfield("ly", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "lz":
+                    //    addfield("lz", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "xlo":
+                    //    addfield("xlo", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "xhi":
+                    //    addfield("xhi", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "ylo":
+                    //    addfield("ylo", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "yhi":
+                    //    addfield("yhi", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "zlo":
+                    //    addfield("zlo", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    //case "zhi":
+                    //    addfield("zhi", compute_elapsed, (int)Enum1.BIGINT);
+                    //    break;
+                    default:
+                        sparta.error.all( "Invalid keyword in stats_style command");
+                        break;
+                }
+            }
+
+
 
         }
         //public void header();
@@ -223,25 +372,25 @@ namespace cstest
         int ncompute;                // # of Compute objects called by stats
         string[] id_compute;           // their IDs
         int[] compute_which;          // 0/1/2 if should call scalar,vector,array
-        Compute[] computes;    // list of ptrs to the Compute objects
+        List<Compute> computes;    // list of ptrs to the Compute objects
 
         int nfix;                    // # of Fix objects called by stats
         string[] id_fix;               // their IDs
-        Fix[] fixes;           // list of ptrs to the Fix objects
+        List<Fix> fixes;           // list of ptrs to the Fix objects
 
         int nsurfcollide;            // # of SurfCollide objs called by stats
         string[] id_surf_collide;      // their IDs
-        SurfCollide[] sc;      // list of ptrs to SurfCollide objects
+        List<SurfCollide> sc;      // list of ptrs to SurfCollide objects
 
         int nsurfreact;             // # of SurfReact objects called by stats
         string[] id_surf_react;       // their IDs
-        SurfReact[] sr;       // list of ptrs to SurfReact objects
+        List<SurfReact> sr;       // list of ptrs to SurfReact objects
 
         int nvariable;               // # of variables evaulated by stats
         string[] id_variable;          // list of variable names
         int[] variables;              // list of Variable indices
 
-
+        
 
 
 
@@ -252,12 +401,11 @@ namespace cstest
             int n = nfield;
 
             keyword =new string[n];
-            //for (int i = 0; i < n; i++) keyword[i] = new string;
-            //vfunc = new FnPtr[n];
+
+            vfunc = new ComputeHandler[n];
             vtype = new int[n];
 
             format = new string[n];
-            //for (int i = 0; i < n; i++) format[i] = new char[32];
             format_column_user = new string[n];
             for (int i = 0; i < n; i++) format_column_user[i] = null;
 
@@ -270,19 +418,19 @@ namespace cstest
             ncompute = 0;
             id_compute = new string[n];
             compute_which = new int[n];
-            computes = new Compute[n];
+            computes = new List<Compute>(n);
 
             nfix = 0;
             id_fix = new string[n];
-            fixes = new Fix[n];
+            fixes = new List<Fix>(n);
 
             nsurfcollide = 0;
             id_surf_collide = new string[n];
-            sc = new SurfCollide[n];
+            sc = new List<SurfCollide>(n);
 
             nsurfreact = 0;
             id_surf_react = new string[n];
-            sr = new SurfReact[n];
+            sr = new List<SurfReact>(n);
 
             nvariable = 0;
             id_variable = new string[n];
@@ -290,72 +438,118 @@ namespace cstest
         }
         //void deallocate();
 
-  //      int add_compute(const string, int);
-  //int add_fix(const string);
-  //      int add_surf_collide(const string);
-  //      int add_surf_react(const string);
-  //      int add_variable(const string);
+        //      int add_compute(const string, int);
+        //int add_fix(const string);
+        //      int add_surf_collide(const string);
+        //      int add_surf_react(const string);
+        //      int add_variable(const string);
 
-  //      typedef void (Stats::* FnPtr) ();
-  //void addfield(const string, FnPtr, int);
-  //FnPtr* vfunc;                // list of ptrs to functions
+        //      typedef void (Stats::* FnPtr) ();
+        void addfield(string key, ComputeHandler func, int typeflag)
+        {
+            keyword[nfield]=string.Copy(key);
+            vfunc[nfield] = func;
+            vtype[nfield] = typeflag;
+            nfield++;
 
-  //      void compute_compute();        // functions that compute a single value
-  //      void compute_fix();            // via calls to Compute,Fix,
-  //      void compute_surf_collide();   //   SurfCollide,SurfReact,Variable classes
-  //      void compute_surf_react();
-  //      void compute_variable();
+        }
+        ComputeHandler[] vfunc;                // list of ptrs to functions
 
-  //      // functions that compute a single value
-  //      // customize a new keyword by adding a method prototype
+        //void compute_compute();        // functions that compute a single value
+        //void compute_fix();            // via calls to Compute,Fix,
+        //void compute_surf_collide();   //   SurfCollide,SurfReact,Variable classes
+        //void compute_surf_react();
+        //void compute_variable();
 
-  //      void compute_step();
-  //      void compute_elapsed();
-  //      void compute_elaplong();
-  //      void compute_dt();
-  //      void compute_cpu();
-  //      void compute_tpcpu();
-  //      void compute_spcpu();
-  //      void compute_wall();
+        // functions that compute a single value
+        // customize a new keyword by adding a method prototype
 
-  //      void compute_np();
-  //      void compute_ntouch();
-  //      void compute_ncomm();
-  //      void compute_nbound();
-  //      void compute_nexit();
-  //      void compute_nscoll();
-  //      void compute_nscheck();
-  //      void compute_ncoll();
-  //      void compute_nattempt();
-  //      void compute_nreact();
-  //      void compute_nsreact();
+        void compute_step()
+        {
+            bivalue = sparta.update.ntimestep;
+        }
+        //void compute_elapsed()
+        //{
+        //    System.Console.WriteLine("compute elapsed" );
+        //}
+        //void compute_elaplong();
+        //void compute_dt();
+        void compute_cpu()
+        {
+            if (firststep == 0) dvalue = 0.0;
+            else dvalue = sparta.timer.elapsed((int)Timer.Enum1.TIME_LOOP);
+        }
+        //void compute_tpcpu();
+        //void compute_spcpu();
+        //void compute_wall();
 
-  //      void compute_npave();
-  //      void compute_ntouchave();
-  //      void compute_ncommave();
-  //      void compute_nboundave();
-  //      void compute_nexitave();
-  //      void compute_nscollave();
-  //      void compute_nscheckave();
-  //      void compute_ncollave();
-  //      void compute_nattemptave();
-  //      void compute_nreactave();
-  //      void compute_nsreactave();
+        void compute_np()
+        {
+            bigint n = sparta.particle.nlocal;
+            sparta.mpi.MPI_Allreduce(ref n,ref sparta.particle.nglobal, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            bivalue = sparta.particle.nglobal;
+        }
+        //void compute_ntouch();
+        //void compute_ncomm();
+        //void compute_nbound();
+        //void compute_nexit();
+        void compute_nscoll()
+        {
+            bigint n = sparta.update.nscollide_one;
+            sparta.mpi.MPI_Allreduce(ref n, ref bivalue, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+        }
+        void compute_nscheck()
+        {
+            bigint n = sparta.update.nscheck_one;
+            sparta.mpi.MPI_Allreduce(ref n, ref bivalue, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+        }
+        void compute_ncoll()
+        {
+            if (sparta.collide==null) bivalue = 0;
+            else
+            {
+                bigint n = sparta.collide.ncollide_one;
+                sparta.mpi.MPI_Allreduce(ref n, ref bivalue, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            }
+        }
+        void compute_nattempt()
+        {
+            if (sparta.collide == null) bivalue = 0;
+            else
+            {
+                bigint n = sparta.collide.nattempt_one;
+                sparta.mpi.MPI_Allreduce(ref n, ref bivalue, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            }
+        }
+        //void compute_nreact();
+        //void compute_nsreact();
 
-  //      void compute_nparent();
-  //      void compute_nchild();
-  //      void compute_nsplit();
+        //void compute_npave();
+        //void compute_ntouchave();
+        //void compute_ncommave();
+        //void compute_nboundave();
+        //void compute_nexitave();
+        //void compute_nscollave();
+        //void compute_nscheckave();
+        //void compute_ncollave();
+        //void compute_nattemptave();
+        //void compute_nreactave();
+        //void compute_nsreactave();
 
-  //      void compute_vol();
-  //      void compute_lx();
-  //      void compute_ly();
-  //      void compute_lz();
+        //void compute_nparent();
+        //void compute_nchild();
+        //void compute_nsplit();
 
-  //      void compute_xlo();
-  //      void compute_xhi();
-  //      void compute_ylo();
-  //      void compute_yhi();
-  //      void compute_zlo();
-  //      void compute_zhi();
+        //void compute_vol();
+        //void compute_lx();
+        //void compute_ly();
+        //void compute_lz();
+
+        //void compute_xlo();
+        //void compute_xhi();
+        //void compute_ylo();
+        //void compute_yhi();
+        //void compute_zlo();
+        //void compute_zhi();
     }
 }

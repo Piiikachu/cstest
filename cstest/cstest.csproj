@@ -78,6 +78,7 @@
     <Compile Include="React.cs" />
     <Compile Include="ReadSurf.cs" />
     <Compile Include="Region.cs" />
+    <Compile Include="Run.cs" />
     <Compile Include="SPARTA.cs" />
     <Compile Include="SpartaMasks.cs" />
     <Compile Include="Stats.cs" />

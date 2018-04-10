@@ -8,9 +8,31 @@ namespace cstest
 {
     public class Timer
     {
+        public enum Enum1
+        { TIME_LOOP, TIME_MOVE, TIME_COLLIDE,
+            TIME_SORT, TIME_COMM, TIME_MODIFY, TIME_OUTPUT, TIME_N };
+
+        public double[] array;
+
+        //public void init();
+        //public void stamp();
+        //public void stamp(int);
+        //public void barrier_start(int);
+        //public void barrier_stop(int);
+        public double elapsed(int which)
+        {
+            double current_time = sparta.mpi.MPI_Wtime();
+            return (current_time - array[which]);
+        }
+
+
+        private double previous_time;
+        private SPARTA sparta;
+
         public Timer(SPARTA sparta)
         {
-
+            this.sparta = sparta;
+            array = new double[(int)Enum1.TIME_N];
         }
     }
 }
