@@ -718,7 +718,7 @@ namespace cstest
             string[] argss = new string[narg];
             Array.Copy(arg, 1, argss, 0, narg);
             sparta.modify.add_fix(narg, argss);
-            
+            Console.WriteLine("done");
         }
         private void global()
         {
@@ -778,7 +778,14 @@ namespace cstest
             Console.WriteLine("done");
         }
         private void surf_react(){}
-        private void timestep(){}
+        private void timestep()
+        {
+            if (narg != 1) sparta.error.all("Illegal timestep command");
+            double dt = double.Parse(arg[1]);
+            if (dt <= 0.0) sparta.error.all("Illegal timestep command");
+            sparta.update.dt = dt;
+            Console.WriteLine("down");
+        }
         private void uncompute(){}
         private void undump(){}
         private void unfix(){}
