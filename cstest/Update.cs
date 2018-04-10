@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using bigint = System.Int64;
+using cellint = System.Int32;
 
 namespace cstest
 {
@@ -143,7 +144,7 @@ namespace cstest
 
             if (runflag == 0) return;
             first_update = 1;
-
+            
             // choose the appropriate move method
 
             if (sparta.domain.dimension == 3)
@@ -153,12 +154,12 @@ namespace cstest
             }
             else if (domain->axisymmetric)
             {
-                if (surf->exist) moveptr = &Update::move < 1,1 >;
+                if (sparta.surf.exist) moveptr = &Update::move < 1,1 >;
     else moveptr = &Update::move < 1,0 >;
             }
             else if (domain->dimension == 2)
             {
-                if (surf->exist) moveptr = &Update::move < 2,1 >;
+                if (sparta.surf.exist) moveptr = &Update::move < 2,1 >;
     else moveptr = &Update::move < 2,0 >;
             }
 
@@ -403,9 +404,144 @@ namespace cstest
 
         //      typedef void (Update::* FnPtr) ();
         //FnPtr moveptr;             // ptr to move method
-        //      template<int, int> void move();
+        void move(int DIM,int SURF)
+        {
+            bool hitflag;
+            int m, icell, icell_original, nmask, outface, bflag, nflag, itmp;
+            int side, minside, minsurf, nsurf, cflag, isurf, exclude, stuck_iterate;
+            int pstart=0, pstop=, entryexit, any_entryexit;
+            Enum4 pflag;
+            int[] csurfs;
+            cellint[] neigh;
+            double dtremain, frac, newfrac, param, minparam, rnew, dtsurf, tc, tmp;
+            double[] xnew=new double[3], xhold=new double[3], xc=new double[3],
+                vc=new double[3], minxc=new double[3], minvc=new double[3];
+            double[] x,v,lo,hi;
+            Surf.Tri tri;
+            Surf.Line line;
+            Particle.OnePart iorig;
+            Particle.OnePart[] particles;
+            Particle.OnePart[] ipart,jpart;
 
-        //      int perturbflag;
+            // for 2d and axisymmetry only
+            // xnew,xc passed to geometry routines which use or set z component
+
+            if (DIM < 3) xnew[2] = xc[2] = 0.0;
+
+            // extend migration list if necessary
+
+            int nlocal = sparta.particle.nlocal;
+            int maxlocal = sparta.particle.maxlocal;
+
+            if (nlocal > maxmigrate)
+            {
+                maxmigrate = maxlocal;
+                mlist = new int[maxmigrate];
+            }
+
+            // counters
+
+            niterate = 0;
+            ntouch_one = ncomm_one = 0;
+            nboundary_one = nexit_one = 0;
+            nscheck_one = nscollide_one = 0;
+            sparta.surf.nreact_one = 0;
+
+            // move/migrate iterations
+
+            Grid.ChildCell[] cells = sparta.grid.cells;
+            List<Surf.Tri> tris = sparta.surf.tris;
+            List<Surf.Line> lines = sparta.surf.lines;
+            List < Surf.Point> pts = sparta.surf.pts;
+            double dt = this.dt;
+            int notfirst = 0;
+
+            while (true)
+            {
+                niterate++;
+                particles = sparta.particle.particles;
+                nmigrate = 0;
+                entryexit = 0;
+
+                if (notfirst == 0)
+                {
+                    notfirst = 1;
+                    pstart = 0;
+                    pstop = nlocal;
+                }
+
+                for (int i = pstart; i < pstop; i++)
+                {
+                    pflag = (Enum4)particles[i].flag;
+
+                    // received from another proc and move is done
+                    // if first iteration, PDONE is from a previous step,
+                    //   set pflag to PKEEP so move the particle on this step
+                    // else do nothing
+
+                    if (pflag == Enum4.PDONE)
+                    {
+                        pflag = Enum4.PKEEP;
+                        particles[i].flag = (int)Enum4.PKEEP;
+                        if (niterate > 1) continue;
+                    }
+
+                    x = particles[i].x;
+                    v = particles[i].v;
+                    exclude = -1;
+
+                    // apply moveperturb() to PKEEP and PINSERT since are computing xnew
+                    // not to PENTRY,PEXIT since are just re-computing xnew of sender
+                    // set xnew[2] to linear move for axisymmetry, will be remapped later
+                    // let pflag = PEXIT persist to check during axisymmetric cell crossing
+
+                    switch (pflag)
+                    {
+                        case Enum4.PKEEP:
+                            dtremain = dt;
+                            xnew[0] = x[0] + dtremain * v[0];
+                            xnew[1] = x[1] + dtremain * v[1];
+                            if (DIM != 2) xnew[2] = x[2] + dtremain * v[2];
+                            if (perturbflag!=0) (this->* moveperturb)(dtremain, xnew, v);
+                            break;
+                        case Enum4.PINSERT:
+                            break;
+                        case Enum4.PDONE:
+                            break;
+                        case Enum4.PDISCARD:
+                            break;
+                        case Enum4.PENTRY:
+                            break;
+                        case Enum4.PEXIT:
+                            break;
+                        case Enum4.PSURF:
+                            break;
+                        default:
+                            break;
+                    }
+
+
+
+
+
+
+
+
+
+                }
+
+
+
+
+            }
+
+
+
+
+
+        }
+
+        int perturbflag;
         //      typedef void (Update::* FnPtr2) (double, double*, double*);
         //FnPtr2 moveperturb;        // ptr to moveperturb method
 
