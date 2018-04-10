@@ -764,7 +764,10 @@ namespace cstest
             Console.WriteLine("done");
 
         }
-        private void stats(){}
+        private void stats()
+        {
+            sparta.output.set_stats(narg, arg);
+        }
         private void stats_modify(){}
         private void stats_style(){}
         private void surf_collide()

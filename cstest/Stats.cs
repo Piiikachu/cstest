@@ -1,7 +1,7 @@
 ﻿using bigint = System.Int64;
 namespace cstest
 {
-    class Stats
+    public class Stats
     {
         // customize a new keyword by adding to this list:
 
