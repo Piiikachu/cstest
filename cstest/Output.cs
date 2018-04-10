@@ -1,4 +1,5 @@
-﻿using bigint = System.Int64;
+﻿using System;
+using bigint = System.Int64;
 
 namespace cstest
 {
@@ -99,7 +100,18 @@ namespace cstest
                 if (stats_every < 0) sparta.error.all("Illegal stats command");
             }
         }
-        //public void create_stats(int, char**);   // create a Stats style
+        public void create_stats(int narg,string[] args)   // create a Stats style
+        {
+            string[] arg = new string[narg];
+            Array.Copy(args, 1, arg, 0, narg);
+            if (narg < 1) sparta.error.all("Illegal stats_style command");
+            stats.set_fields(narg, arg);
+
+
+
+
+
+        }
         //public void create_restart(int, char**); // create Restart and restart files
         
         //public void memory_usage();               // print out memory usage

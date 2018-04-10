@@ -266,8 +266,10 @@ namespace cstest
         }
         //public void substitute(char*&, char*&, int &, int &, int);
         //// substitute for variables in a string
-        public int expand_args(int narg, string[] arg, int mode, ref string[] earg)
+        public int expand_args(int narg, string[] arg, int mode, out string[] earg)
         {
+            earg = new string[narg];
+            Array.Copy(arg,earg,narg);
             return 0;
         }  // expand args due to wildcard
 
@@ -767,9 +769,13 @@ namespace cstest
         private void stats()
         {
             sparta.output.set_stats(narg, arg);
+            Console.WriteLine("done");
         }
         private void stats_modify(){}
-        private void stats_style(){}
+        private void stats_style()
+        {
+            sparta.output.
+        }
         private void surf_collide()
         {
             sparta.surf.add_collide(narg, arg);
@@ -787,7 +793,7 @@ namespace cstest
             double dt = double.Parse(arg[1]);
             if (dt <= 0.0) sparta.error.all("Illegal timestep command");
             sparta.update.dt = dt;
-            Console.WriteLine("down");
+            Console.WriteLine("done");
         }
         private void uncompute(){}
         private void undump(){}
