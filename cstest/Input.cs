@@ -341,6 +341,10 @@ namespace cstest
             {
                 if (!string.IsNullOrEmpty(str))
                 {
+                    if (str.StartsWith("#"))
+                    {
+                        break;
+                    }
                     strings.Add(str);
                 }
             }

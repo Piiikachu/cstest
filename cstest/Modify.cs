@@ -33,7 +33,7 @@ namespace cstest
 
         public void add_fix(int narg, string[] arg)
         {
-            
+
             if (sparta.domain.box_exist == 0)
                 sparta.error.all("Fix command before simulation box is defined");
             if (narg < 2) sparta.error.all("Illegal fix command");
@@ -57,9 +57,9 @@ namespace cstest
             if (ifix < nfix)
             {
                 newflag = 0;
-                if (!string.Equals(arg[1], fix[ifix].style) )
+                if (!string.Equals(arg[1], fix[ifix].style))
                     sparta.error.all("Replacing a fix, but new style != old style");
-                
+
                 fix[ifix] = null;
             }
             else
@@ -69,11 +69,33 @@ namespace cstest
                 {
                     maxfix += DELTA;
                     fix = new List<Fix>(maxfix);
+                    fmask = new int[maxfix];
                 }
             }
 
             //todo :create the fix
 
+            int found = 0;
+            if (sparta.suffix_enable!=0)
+            {
+                if (sparta.suffix!=null)
+                {
+                    string estyle = string.Format("{0}/{1}", arg[1], sparta.suffix);
+                }
+            }
+
+            switch (arg[1])
+            {
+                case "emit/face":
+                    fix.Add(new FixEmitFace(sparta, narg, arg));
+                    break;
+                default:
+                    sparta.error.all("Unrecognized fix style");
+                    break;
+            }
+
+            fmask[ifix] = fix[ifix].setmask();
+            if (newflag!=0) nfix++;
 
         }
         //public void delete_fix(const char*);

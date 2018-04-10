@@ -86,7 +86,11 @@
             datamask_modify =SpartaMasks.ALL_MASK;
         }
 
-        //public virtual int setmask() = 0;
+
+        public virtual int setmask()
+        {
+            return 0;
+        }
          
         //public virtual void init() { }
         //public virtual void setup() { }
