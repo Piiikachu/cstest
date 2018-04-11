@@ -18,11 +18,17 @@
 
         // called by other classes to check point versus region
 
-        //       int match(double*);
+        public int match(double[] x)
+        {
+            return ((inside(x) ^ interior)==0)? 1:0;
+        }
 
         //       // implemented by each region, not called by other classes
 
-        //       virtual int inside(double*) = 0;
+        protected virtual int inside(double[] x)
+        {
+            return 0;
+        }
 
         //protected:
         // void options(int, char**);

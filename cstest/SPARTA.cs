@@ -625,25 +625,25 @@ namespace cstest
                 }
             }
         }
-        void init()
+        public void init()
         {
             update.init();
-            particle.init();
-            comm.init();
-            domain.init();
-            grid.init();
-            surf.init();
-            if (react!=null)
-            {
-                react.init();
-            }
-            if (collide!=null)
-            {
-                collide.init();
-            }
-            modify.init();
-            output.init();
-            timer.init();
+            //particle.init();
+            //comm.init();
+            //domain.init();
+            //grid.init();
+            //surf.init();
+            //if (react!=null)
+            //{
+                //react.init();
+            //}
+            //if (collide!=null)
+            //{
+                //collide.init();
+            //}
+            //modify.init();
+            //output.init();
+            //timer.init();
         }
         public void destroy()
         {

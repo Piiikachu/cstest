@@ -503,7 +503,7 @@ namespace cstest
 
         private void run()
         {
-            new 
+            new Run(sparta).command(narg, arg); 
         }
 
         private void read_surf()

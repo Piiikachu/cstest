@@ -11,20 +11,23 @@ namespace cstest
                                            //   useful for debugging to insure
                                            //   reproducible ordering of recv datums
         public int commpartstyle;                // 1 for neighbor, 0 for all
-                                          //   changes how irregular comm for
-                                          //   particles is performed
+                                                 //   changes how irregular comm for
+                                                 //   particles is performed
 
 
-        //void init() { }
-        //void reset_neighbors();
-        //int migrate_particles(int, int*);
-        //virtual void migrate_cells(int);
-        //int send_cells_adapt(int, int*, char*, char**);
-        //int irregular_uniform(int, int*, char*, int, char**);
-        //void ring(int, int, void*, int, void (*)(int, char*),
-        //          void*, int self = 1);
+        //public void init() { }
+        //public void reset_neighbors();
+        //public int migrate_particles(int, int*);
+        //public virtual void migrate_cells(int);
+        //public int send_cells_adapt(int, int*, char*, char**);
+        //public int irregular_uniform(int, int*, char*, int, char**);
+        public void ring(int n, int nper, void* inbuf, int messtag,
+                void (* callback)(int, char*), void* outbuf, int self)
+        {
 
-        
+        }
+
+
         protected Irregular iparticle,igrid,iuniform;
         protected string sbuf,rbuf;
         protected int maxsendbuf, maxrecvbuf;

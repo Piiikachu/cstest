@@ -55,7 +55,10 @@
     <Compile Include="Fix.cs" />
     <Compile Include="FixEmit.cs" />
     <Compile Include="FixEmitFace.cs" />
+    <Compile Include="Geometry.cs" />
     <Compile Include="Grid.cs" />
+    <Compile Include="GridComm.cs" />
+    <Compile Include="GridID.cs" />
     <Compile Include="GridSurf.cs" />
     <Compile Include="Input.cs" />
     <Compile Include="Irregular.cs" />

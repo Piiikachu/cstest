@@ -149,11 +149,11 @@ namespace cstest
 
         public struct SplitInfo
         {
-            int icell;                // index of split cell in cells this belongs to
-            int xsub;                 // which sub cell (0 to Nsplit-1) xsplit is in
-            double[] xsplit;         // coords of point in split cell
-            int[] csplits;             // sub cell (0 to Nsplit-1) each Nsurf belongs to
-            int[] csubs;               // indices in cells of Nsplit sub cells
+            public int icell;                // index of split cell in cells this belongs to
+            public int xsub;                 // which sub cell (0 to Nsplit-1) xsplit is in
+            public double[] xsplit;         // coords of point in split cell
+            public int[] csplits;             // sub cell (0 to Nsplit-1) each Nsurf belongs to
+            public int[] csubs;               // indices in cells of Nsplit sub cells
         };
 
         // parent cell
@@ -161,15 +161,15 @@ namespace cstest
 
         public struct ParentCell
         {
-            cellint id;               // cell ID in bitwise format, 0 = root
-            int mask;                 // grid group mask
-            int level;                // level in hierarchical grid, 0 = root
-            int nbits;                // # of bits to encode my ID, also my siblings
-            int newbits;              // # of additional bits to encode my children
-            int iparent;              // index of parent, -1 if id=root
-            int grandparent;          // 1 if this cell is a grandparent, 0 if not
-            int nx, ny, nz;             // sub grid within cell
-            double[] lo, hi;       // opposite corner pts of cell
+            public cellint id;               // cell ID in bitwise format, 0 = root
+            public int mask;                 // grid group mask
+            public int level;                // level in hierarchical grid, 0 = root
+            public int nbits;                // # of bits to encode my ID, also my siblings
+            public int newbits;              // # of additional bits to encode my children
+            public int iparent;              // index of parent, -1 if id=root
+            public int grandparent;          // 1 if this cell is a grandparent, 0 if not
+            public int nx, ny, nz;             // sub grid within cell
+            public double[] lo, hi;       // opposite corner pts of cell
         };
 
         public int nlocal;                 // # of child cells I own (all 3 kinds)
@@ -205,9 +205,9 @@ namespace cstest
             exist = exist_ghost = clumped = 0;
             sparta.mpi.MPI_Comm_rank(sparta.world, ref me);
 
-            //gnames = (char**)memory->smalloc(MAXGROUP * sizeof(char*), "grid:gnames");
-            //bitmask = (int*)memory->smalloc(MAXGROUP * sizeof(int), "grid:bitmask");
-            //inversemask = (int*)memory->smalloc(MAXGROUP * sizeof(int),
+            //gnames = (char**)memory.smalloc(MAXGROUP * sizeof(char*), "grid:gnames");
+            //bitmask = (int*)memory.smalloc(MAXGROUP * sizeof(int), "grid:bitmask");
+            //inversemask = (int*)memory.smalloc(MAXGROUP * sizeof(int),
             //                                      "grid:inversemask");
 
             gnames = new string[MAXGROUP];
@@ -274,8 +274,83 @@ namespace cstest
 
         //      public void remove();
         //      public void init();
-        //      public void add_child_cell(cellint, int, double*, double*);
-        //      public void add_parent_cell(cellint, int, int, int, int, double*, double*);
+        public void add_child_cell(cellint id, int iparent, double[] lo, double[] hi)
+        {
+            grow_cells(1, 1);
+
+            int ncorner;
+            if (sparta.domain.dimension == 3) ncorner = 8;
+            else ncorner = 4;
+
+            ChildCell c = cells[nlocal];
+            c.id = id;
+            c.iparent = iparent;
+            c.proc = me;
+            c.ilocal = nlocal;
+            c.lo[0] = lo[0];
+            c.lo[1] = lo[1];
+            c.lo[2] = lo[2];
+            c.hi[0] = hi[0];
+            c.hi[1] = hi[1];
+            c.hi[2] = hi[2];
+            c.nsurf = 0;
+            c.csurfs = null;
+            c.nsplit = 1;
+            c.isplit = -1;
+
+            ChildInfo ci = cinfo[nlocal];
+            ci.count = 0;
+            ci.first = -1;
+            ci.mask = 1;
+            ci.type = (int) Enum4.OUTSIDE;
+            for (int i = 0; i < ncorner; i++) ci.corner[i] = (int)Enum4.UNKNOWN;
+            ci.weight = 1.0;
+
+            if (sparta.domain.dimension == 3)
+                ci.volume = (hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]);
+            else if (sparta.domain.axisymmetric!=0)
+                ci.volume = MyConst.MY_PI * (hi[1] * hi[1] - lo[1] * lo[1]) * (hi[0] - lo[0]);
+            else
+                ci.volume = (hi[0] - lo[0]) * (hi[1] - lo[1]);
+
+            // increment both since are adding an unsplit cell
+
+            nunsplitlocal++;
+            nlocal++;
+        }
+
+
+        public void add_parent_cell(cellint id, int iparent,
+                           int nx, int ny, int nz, double[] lo, double[] hi)
+        {
+            grow_pcells(1);
+
+            ParentCell p = pcells[nparent];
+            p.id = id;
+            p.mask = 1;
+            if (iparent >= 0)
+            {
+                p.level = pcells[iparent].level + 1;
+                p.nbits = pcells[iparent].nbits + pcells[iparent].newbits;
+            }
+            else p.level = p.nbits = 0;
+            p.newbits = id_bits(nx, ny, nz);
+            p.iparent = iparent;
+            p.grandparent = 0;                // set by caller
+
+            if (p.nbits + p.newbits > maxbits)
+                sparta.error.one("Cell ID has too many bits");
+
+            p.nx = nx;
+            p.ny = ny;
+            p.nz = nz;
+            p.lo = new double[3];
+            p.hi = new double[3];
+            p.lo[0] = lo[0]; p.lo[1] = lo[1]; p.lo[2] = lo[2];
+            p.hi[0] = hi[0]; p.hi[1] = hi[1]; p.hi[2] = hi[2];
+
+            nparent++;
+        }
         //      public void add_split_cell(int);
         //      public void add_sub_cell(int, int);
         public void remove_ghosts()
@@ -283,8 +358,41 @@ namespace cstest
             exist_ghost = 0;
             nghost = nunsplitghost = nsplitghost = nsubghost = 0;
         }
-        //      public void setup_owned();
-        //      public void acquire_ghosts();
+        public void setup_owned()
+        {
+            // global counts for ncell, nunsplit, nsplit, nsub
+
+            bigint one = nlocal - nsublocal;
+            sparta.mpi.MPI_Allreduce(ref one, ref ncell, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            one = nunsplitlocal = nlocal - nsplitlocal - nsublocal;
+            sparta.mpi.MPI_Allreduce(ref one, ref nunsplit, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            sparta.mpi.MPI_Allreduce(ref nsplitlocal, ref nsplit, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            sparta.mpi.MPI_Allreduce(ref nsublocal, ref nsub, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            one = nunsplitlocal = nlocal - nsplitlocal - nsublocal;
+
+            // set cell_epsilon to 1/2 the smallest dimension of any grid cell
+
+            int dimension = sparta.domain.dimension;
+
+            double eps = BIG;
+            for (int i = 0; i < nlocal; i++)
+            {
+                if (cells[i].nsplit <= 0) continue;
+                eps = Math.Min(eps, cells[i].hi[0] - cells[i].lo[0]);
+                eps = Math.Min(eps, cells[i].hi[1] - cells[i].lo[1]);
+                if (dimension == 3) eps = Math.Min(eps, cells[i].hi[2] - cells[i].lo[2]);
+            }
+
+            sparta.mpi.MPI_Allreduce(ref eps, ref cell_epsilon, 1, MPI.MPI_DOUBLE, MPI.MPI_MIN, sparta.world);
+            cell_epsilon *= 0.5;
+        }
+        public void acquire_ghosts()
+        {
+            if (cutoff < 0.0) acquire_ghosts_all();
+            else if (clumped!=0) acquire_ghosts_near();
+            else if (sparta.comm.me == 0)
+                sparta.error.one("Could not acquire nearby ghost cells b/c grid partition is not clumped");
+        }
         //      public void rehash();
         //      public void find_neighbors();
         //      public void unset_neighbors();
@@ -292,82 +400,78 @@ namespace cstest
         //      public void set_inout();
         //      public void check_uniform();
         //      public void type_check(int flag = 1);
+
+
+
+
+
+
+        //      public void refine_cell(int, int, int, int, int, int*,
+        //                 class Cut2d *, class Cut3d *);
+        //      public void coarsen_cell(int, int, int*, int*, int*, class AdaptGrid *,
+        //                  class Cut2d *, class Cut3d *);
+
+        //      public void group(int, char**);
+        //      public int add_group(const char*);
+        //      public int find_group(const char*);
+
+        public virtual void grow_pcells(int n)
+        {
+            if (nparent + n >= maxparent)
+            {
+                int oldmax = maxparent;
+                while (maxparent < nparent + n) maxparent += DELTA;
+                pcells =new ParentCell[maxparent];
+                
+                //memset(ref pcells[oldmax], 0, (maxparent - oldmax) * sizeof(ParentCell));
+            }
+        }
+
+        //      public void write_restart(FILE*);
+        //      public void read_restart(FILE*);
+        //      public int size_restart();
+        //      public int pack_restart(char*);
+        //      public int unpack_restart(char*);
+
+        //      public bigint memory_usage();
+
+        //      public void debug();
+
+        //      // grid_comm.cpp
+
+
+
+        //       // grid_surf.cpp
+
+
+
+        //      // grid_id.cpp
+
        
 
+        //      // extract/return neighbor flag for iface from per-cell nmask
+        //      // inlined for efficiency
 
-    
-    
+        //      inline int neigh_decode(int nmask, int iface)
+        //      {
+        //          return (nmask ref  neighmask[iface]) >> neighshift[iface];
+        //      }
 
-    //      public void refine_cell(int, int, int, int, int, int*,
-    //                 class Cut2d *, class Cut3d *);
-    //      public void coarsen_cell(int, int, int*, int*, int*, class AdaptGrid *,
-    //                  class Cut2d *, class Cut3d *);
+        //      // overwrite neighbor flag for iface in per-cell nmask
+        //      // first line zeroes the iface bits via one's complement of mask
+        //      // inlined for efficiency
+        //      // return updated nmask
 
-    //      public void group(int, char**);
-    //      public int add_group(const char*);
-    //      public int find_group(const char*);
-
-    //      public virtual void grow_pcells(int);
-
-    //      public void write_restart(FILE*);
-    //      public void read_restart(FILE*);
-    //      public int size_restart();
-    //      public int pack_restart(char*);
-    //      public int unpack_restart(char*);
-
-    //      public bigint memory_usage();
-
-    //      public void debug();
-
-    //      // grid_comm.cpp
-
-    //      public int pack_one(int, char*, int, int, int);
-    //      public int unpack_one(char*, int, int);
-    //      public int pack_one_adapt(char*, char*, int);
-    //      public int pack_particles(int, char*, int);
-    //      public int unpack_particles(char*, int);
-    //      public void unpack_particles_adapt(int, char*);
-    //      public void compress();
-
-    //       // grid_surf.cpp
+        //      inline int neigh_encode(int flag, int nmask, int iface)
+        //      {
+        //          nmask ref = ~neighmask[iface];
+        //          nmask |= flag << neighshift[iface];
+        //          return nmask;
+        //      }
 
 
-
-    //      // grid_id.cpp
-
-    //      int id_find_child(int, double*);
-    //      int id_find_parent(cellint, cellint &);
-    //      cellint id_str2num(char*);
-    //      void id_num2str(cellint, char*);
-    //      void id_pc_split(char*, char*, char*);
-    //      void id_child_lohi(int, cellint, double*, double*);
-    //      int id_bits(int, int, int);
-    //      cellint id_find_face(double*, int, int, double*, double*);
-    //      int id_child_from_parent_corner(int, int);
-
-    //      // extract/return neighbor flag for iface from per-cell nmask
-    //      // inlined for efficiency
-
-    //      inline int neigh_decode(int nmask, int iface)
-    //      {
-    //          return (nmask & neighmask[iface]) >> neighshift[iface];
-    //      }
-
-    //      // overwrite neighbor flag for iface in per-cell nmask
-    //      // first line zeroes the iface bits via one's complement of mask
-    //      // inlined for efficiency
-    //      // return updated nmask
-
-    //      inline int neigh_encode(int flag, int nmask, int iface)
-    //      {
-    //          nmask &= ~neighmask[iface];
-    //          nmask |= flag << neighshift[iface];
-    //          return nmask;
-    //      }
-
-
-    // protected:
-    protected int me;
+        // protected:
+        protected int me;
         protected int maxcell;             // size of cells
         protected int maxsplit;            // size of sinfo
         protected int maxparent;           // size of pcells
@@ -400,15 +504,68 @@ namespace cstest
 
         // private methods
 
-        //void acquire_ghosts_all();
-        //void acquire_ghosts_near();
+        void acquire_ghosts_all()
+        {
+            exist_ghost = 1;
+            nempty = 0;
+
+            // compute total # of ghosts so can pre-allocate cells array
+
+            int nghost_new=0;
+            sparta.mpi.MPI_Allreduce(ref nlocal,ref nghost_new, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            nghost_new -= nlocal;
+            grow_cells(nghost_new, 0);
+
+            // create buf for holding all of my cells, not including sub cells
+
+            int sendsize = 0;
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                sendsize += pack_one(icell, null, 0, 0, 0);
+            }
+
+            string sbuf;
+            
+
+            // pack each unsplit or split cell
+            // subcells will be packed by split cell
+
+            sendsize = 0;
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                sendsize += pack_one(icell, ref sbuf[sendsize], 0, 0, 1);
+            }
+
+            // circulate buf of my grid cells around to all procs
+            // unpack augments my ghost cells with info from other procs
+
+            //gptr = this;
+            sparta.comm.ring(sendsize, sizeof(char), sbuf, 1, unpack_ghosts, NULL, 0);
+
+            //memory->destroy(sbuf);
+        }
+        void acquire_ghosts_near()
+        {
+
+        }
 
         //void box_intersect(double*, double*, double*, double*,
         //                   double*, double*);
         //int box_overlap(double*, double*, double*, double*);
         //int box_periodic(double*, double*, Box*);
 
-        //virtual void grow_cells(int, int);
+        protected virtual void grow_cells(int n, int m)
+        {
+            if (nlocal + nghost + n >= maxcell)
+            {
+                int oldmax = maxcell;
+                while (maxcell < nlocal + nghost + n) maxcell += DELTA;
+                cells = new ChildCell[maxcell];
+                //memset(ref cells[oldmax], 0, (maxcell - oldmax) * sizeof(ChildCell));
+            }
+        }
         //virtual void grow_sinfo(int);
 
         //void surf2grid_stats();
@@ -420,13 +577,13 @@ namespace cstest
         //// callback function for ring communication
 
         //static Grid* gptr;
-        //static void unpack_ghosts(int, char*);
+       
         public void weight(int narg, string[] arg)
         {
             int i;
 
             if (exist != 0) sparta.error.all("Cannot weight cells before grid is defined");
-            if (narg > 0 && narg != 1) sparta.error.all("Illegal weight command");
+            if (narg > 0 &&  narg != 1) sparta.error.all("Illegal weight command");
 
             // if called from read_restart with narg = -1, cellweightflag is already set
 
@@ -438,7 +595,7 @@ namespace cstest
                 else sparta.error.all("Illegal weight command");
             }
 
-            if (cellweightflag == (int)Enum6.RADWEIGHT && sparta.domain.axisymmetric != 0)
+            if (cellweightflag == (int)Enum6.RADWEIGHT &&  sparta.domain.axisymmetric != 0)
                 sparta.error.all("Cannot use weight cell radius unless axisymmetric");
 
             // set per-cell weights
