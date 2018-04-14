@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
 using bigint = System.Int64;
 using cellint = System.Int32;
 namespace cstest
@@ -493,8 +495,8 @@ namespace cstest
 
         protected struct Box
         {
-            double[] lo, hi;    // opposite corners of extended bbox
-            int proc;              // proc that owns it
+            public double[] lo, hi;    // opposite corners of extended bbox
+            public int proc;              // proc that owns it
         };
 
         // Particle class values used for packing/unpacking particles in grid comm
@@ -522,10 +524,11 @@ namespace cstest
             for (int icell = 0; icell < nlocal; icell++)
             {
                 if (cells[icell].nsplit <= 0) continue;
-                sendsize += pack_one(icell, null, 0, 0, 0);
+                StringBuilder buf = new StringBuilder();
+                sendsize += pack_one(icell, 0, 0, 0,ref buf);
             }
 
-            string sbuf;
+            StringBuilder sbuf = new StringBuilder();
             
 
             // pack each unsplit or split cell
@@ -535,20 +538,220 @@ namespace cstest
             for (int icell = 0; icell < nlocal; icell++)
             {
                 if (cells[icell].nsplit <= 0) continue;
-                sendsize += pack_one(icell, ref sbuf[sendsize], 0, 0, 1);
+                
+                sendsize += pack_one(icell, 0, 0, 1, ref sbuf);
             }
 
             // circulate buf of my grid cells around to all procs
             // unpack augments my ghost cells with info from other procs
 
             //gptr = this;
-            sparta.comm.ring(sendsize, sizeof(char), sbuf, 1, unpack_ghosts, NULL, 0);
+            sparta.comm.ring(sendsize, sizeof(char),sbuf, 1, unpack_ghosts, null, 0);
 
             //memory->destroy(sbuf);
         }
         void acquire_ghosts_near()
         {
+            exist_ghost = 1;
 
+            // bb lo/hi = bounding box for my owned cells
+
+            int i;
+            double[] bblo=new double[3], bbhi=new double[3];
+            double[] lo,hi;
+
+            for (i = 0; i < 3; i++)
+            {
+                bblo[i] = BIG;
+                bbhi[i] = -BIG;
+            }
+
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                lo = new double[Marshal.SizeOf(cells[icell].lo)];
+                hi = new double[Marshal.SizeOf(cells[icell].hi)];
+                lo = cells[icell].lo;
+                hi = cells[icell].hi;
+                for (i = 0; i < 3; i++)
+                {
+                    bblo[i] = Math.Min(bblo[i], lo[i]);
+                    bbhi[i] = Math.Max(bbhi[i], hi[i]);
+                }
+            }
+            // ebb lo/hi = bbox + grid cutoff
+            // trim to simulation box in non-periodic dims
+            // if bblo/hi is at periodic boundary and cutoff is 0.0,
+            //   add cell_epsilon to insure ghosts across periodic boundary acquired,
+            //   else may be UNKNOWN to owned cell
+
+            double[] boxlo = sparta.domain.boxlo;
+            double[] boxhi = sparta.domain.boxhi;
+            int[] bflag = sparta.domain.bflag;
+
+            double[] ebblo=new double[3], ebbhi=new double[3];
+            for (i = 0; i < 3; i++)
+            {
+                ebblo[i] = bblo[i] - cutoff;
+                ebbhi[i] = bbhi[i] + cutoff;
+                if (bflag[2 * i] != (int)Enum2.PERIODIC) ebblo[i] = Math.Max(ebblo[i], boxlo[i]);
+                if (bflag[2 * i] != (int)Enum2.PERIODIC) ebbhi[i] = Math.Min(ebbhi[i], boxhi[i]);
+                if (bflag[2 * i] == (int)Enum2.PERIODIC && bblo[i] == boxlo[i] && cutoff == 0.0)
+                    ebblo[i] -= cell_epsilon;
+                if (bflag[2 * i] == (int)Enum2.PERIODIC && bbhi[i] == boxhi[i] && cutoff == 0.0)
+                    ebbhi[i] += cell_epsilon;
+            }
+            // box = ebbox split across periodic BC
+            // 27 is max number of periodic images in 3d
+
+            Box[] box=new Box[27];
+            int nbox = box_periodic(ebblo, ebbhi, box);
+
+            // boxall = collection of boxes from all procs
+
+            int me = sparta.comm.me;
+            int nprocs = sparta.comm.nprocs;
+
+            int nboxall=0;
+            sparta.mpi.MPI_Allreduce(ref nbox, ref nboxall, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+
+            int[] recvcounts,displs;
+            recvcounts = new int[nprocs];
+            displs = new int[nprocs];
+            //memory->create(recvcounts, nprocs, "grid:recvcounts");
+            //memory->create(displs, nprocs, "grid:displs");
+
+            int nsend = nbox * Marshal.SizeOf(typeof(Box));
+            //sparta.mpi.MPI_Allgather(ref nsend, 1, MPI.MPI_INT, recvcounts, 1, MPI.MPI_INT, sparta.world);
+            displs[0] = 0;
+            for (i = 1; i < nprocs; i++) displs[i] = displs[i - 1] + recvcounts[i - 1];
+
+            Box[] boxall = new Box[nboxall];
+            //MPI_Allgatherv(box, nsend, MPI_CHAR, boxall, recvcounts, displs, MPI_CHAR, world);
+
+            //memory->destroy(recvcounts);
+            //memory->destroy(displs);
+
+            // nlist = # of boxes that overlap with my bbox, skipping self boxes
+            // list = indices into boxall of overlaps
+            // overlap = true overlap or just touching
+
+            int nlist = 0;
+            int[] list;
+            list = new int[nboxall];
+            //memory->create(list, nboxall, "grid:list");
+
+            for (i = 0; i < nboxall; i++)
+            {
+                if (boxall[i].proc == me) continue;
+                if (box_overlap(bblo, bbhi, boxall[i].lo, boxall[i].hi)) list[nlist++] = i;
+            }
+
+            // loop over my owned cells, not including sub cells
+            // each may overlap with multiple boxes in list
+            // on 1st pass, just tally memory to send copies of my cells
+            // use lastproc to insure a cell only overlaps once per other proc
+            // if oflag = 2 = my cell just touches box,
+            // so flag grid cell as EMPTY ghost by setting nsurf = -1
+
+            int j, oflag, lastproc, nsurf_hold=0;
+
+            nsend = 0;
+            int sendsize = 0;
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                lo = cells[icell].lo;
+                hi = cells[icell].hi;
+                lastproc = -1;
+                for (i = 0; i < nlist; i++)
+                {
+                    j = list[i];
+                    oflag = box_overlap(lo, hi, boxall[j].lo, boxall[j].hi);
+                    if (oflag!=0) continue;
+                    if (boxall[j].proc == lastproc) continue;
+                    lastproc = boxall[j].proc;
+
+                    if (oflag == 2)
+                    {
+                        nsurf_hold = cells[icell].nsurf;
+                        cells[icell].nsurf = -1;
+                    }
+                    StringBuilder bufempty = new StringBuilder();
+                    sendsize += pack_one(icell, 0, 0, 0,ref bufempty);
+                    if (oflag == 2) cells[icell].nsurf = nsurf_hold;
+                    nsend++;
+                }
+            }
+
+            StringBuilder sbuf = new StringBuilder();
+
+            int[] proclist,sizelist;
+            proclist = new int[nsend];
+            sizelist = new int[nsend];
+            //memory->create(proclist, nsend, "grid:proclist");
+            //memory->create(sizelist, nsend, "grid:sizelist");
+
+            // on 2nd pass over local cells, fill the send buf
+            // use lastproc to insure a cell only overlaps once per other proc
+            // if oflag = 2 = my cell just touches box,
+            // so flag grid cell as EMPTY ghost by setting nsurf = -1
+
+            nsend = 0;
+            sendsize = 0;
+
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                lo = cells[icell].lo;
+                hi = cells[icell].hi;
+                lastproc = -1;
+                for (i = 0; i < nlist; i++)
+                {
+                    j = list[i];
+                    oflag = box_overlap(lo, hi, boxall[j].lo, boxall[j].hi);
+                    if (oflag!=0) continue;
+                    if (boxall[j].proc == lastproc) continue;
+                    lastproc = boxall[j].proc;
+
+                    if (oflag == 2)
+                    {
+                        nsurf_hold = cells[icell].nsurf;
+                        cells[icell].nsurf = -1;
+                    }
+                    sizelist[nsend] = pack_one(icell, 0, 0, 1, ref sbuf);
+                    if (oflag == 2) cells[icell].nsurf = nsurf_hold;
+                    proclist[nsend] = lastproc;
+                    sendsize += sizelist[nsend];
+                    nsend++;
+                }
+            }
+
+
+
+            Irregular irregular = new Irregular(sparta);
+            int recvsize;
+            int nrecv = irregular.create_data_variable(nsend, proclist, sizelist,
+                                                        recvsize, comm->commsortflag);
+
+            StringBuilder rbuf = new StringBuilder();
+            //memory->create(rbuf, recvsize, "grid:rbuf");
+            //memset(rbuf, 0, recvsize);
+
+            irregular.exchange_variable(sbuf, sizelist, rbuf);
+            //delete irregular;
+
+            // unpack received grid cells as ghost cells
+
+            int offset = 0;
+            for (i = 0; i < nrecv; i++)
+                offset += unpack_one(rbuf, 0, 0);
+
+            // set nempty = # of EMPTY ghost cells I store
+
+            nempty = 0;
+            for (int icell = nlocal; icell < nlocal + nghost; icell++)
+                if (cells[icell].nsurf < 0) nempty++;
         }
 
         //void box_intersect(double*, double*, double*, double*,

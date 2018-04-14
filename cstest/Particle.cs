@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using bigint = System.Int64;
 using cellint = System.Int32;
 namespace cstest
@@ -94,9 +95,9 @@ namespace cstest
         public int[] ewhich;              // index into eivec,eiarray,edvec,edarray for data
          
         public int[,] eivec;              // pointer to each integer vector
-        public int[,,] eiarray;           // pointer to each integer array
+        public int[][][] eiarray;           // pointer to each integer array
         public double[,] edvec;           // pointer to each double vector
-        public double[,,] edarray;        // pointer to each double array
+        public double[][][] edarray;        // pointer to each double array
          
          // restart buffers, filled by read_restart
          
@@ -339,7 +340,50 @@ namespace cstest
         //public int sizeof_custom();
         //public void write_restart_custom(FILE* fp);
         //public void read_restart_custom(FILE* fp);
-        //public void pack_custom(int, char*);
+        public void pack_custom(int n,ref StringBuilder buf)
+        {
+            int i, ptr = 0;
+
+            if (ncustom_ivec!=0)
+            {
+                for (i = 0; i < ncustom_ivec; i++)
+                {
+                    //memcpy(ptr, &eivec[i][n], sizeof(int));
+                    buf.Append(eivec[i, n]);
+                    ptr += sizeof(int);
+                }
+            }
+            if (ncustom_iarray!=0)
+            {
+                for (i = 0; i < ncustom_iarray; i++)
+                {
+                    //memcpy(ptr, eiarray[i][n], eicol[i] * sizeof(int));
+                    buf.Append(eiarray[i][n]);
+                    ptr += eicol[i] * sizeof(int);
+                }
+            }
+
+
+            if (ncustom_dvec!=0)
+            {
+                for (i = 0; i < ncustom_dvec; i++)
+                {
+                    //memcpy(ptr, &edvec[i][n], sizeof(double));
+                    buf.Append(edvec[i, n]);
+                    ptr += sizeof(double);
+                }
+            }
+            if (ncustom_darray!=0)
+            {
+                for (i = 0; i < ncustom_darray; i++)
+                {
+                    //memcpy(ptr, edarray[i][n], edcol[i] * sizeof(double));
+                    buf.Append(edarray[i][n]);
+                    ptr += edcol[i] * sizeof(double);
+                }
+            }
+
+        }
         //public void unpack_custom(char*, int);
 
         //public bigint memory_usage();

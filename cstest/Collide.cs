@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using bigint = System.Int64;
 namespace cstest
 {
@@ -23,9 +24,11 @@ namespace cstest
          
         public int ncollide_one, nattempt_one, nreact_one;
         public bigint ncollide_running, nattempt_running, nreact_running;
+        private SPARTA sparta;
 
         public Collide(SPARTA sparta, int narg, string[] arg)
         {
+            this.sparta = sparta;
             int n = arg[0].Length + 1;
             style = string.Copy(arg[0]);
 
@@ -82,11 +85,74 @@ namespace cstest
         //public virtual void setup_collision(Particle::OnePart*, Particle::OnePart*) = 0;
         //public virtual int perform_collision(Particle::OnePart*&, Particle::OnePart*&,
         //                               Particle::OnePart*&) = 0;
-         
+
         //public virtual double extract(int, const char*) {return 0.0;
 
 
-        //public virtual int pack_grid_one(int, char*, int);
+        public virtual int pack_grid_one(int icell,ref StringBuilder buf, int memflag)
+        {
+            int nbytes = ngroups * ngroups * sizeof(double);
+            
+            Grid.ChildCell[] cells = sparta.grid.cells;
+
+            int n;
+            if (remainflag!=0)
+            {
+                if (memflag!=0)
+                {
+                    //memcpy(buf, &vremax[icell][0][0], nbytes);
+                    buf.Append(vremax[icell,0,0]);
+                    //memcpy(&buf[nbytes], &remain[icell][0][0], nbytes);
+                    buf.Append(remain[icell, 0, 0]);
+                }
+                n = 2 * nbytes;
+            }
+            else
+            {
+                if (memflag!=0)
+                {
+                    //memcpy(buf, &vremax[icell][0][0], nbytes);
+                    buf.Append(vremax[icell, 0, 0]);
+                }
+
+                n = nbytes;
+            }
+
+            if (cells[icell].nsplit > 1)
+            {
+                int isplit = cells[icell].isplit;
+                int nsplit = cells[icell].nsplit;
+                for (int i = 0; i < nsplit; i++)
+                {
+                    int m = sparta.grid.sinfo[isplit].csubs[i];
+                    if (remainflag!=0)
+                    {
+                        if (memflag!=0)
+                        {
+                            //memcpy(&buf[n], &vremax[m][0][0], nbytes);
+                            buf.Append(vremax[m, 0, 0]);
+                            n += nbytes;
+                            //memcpy(&buf[n], &remain[m][0][0], nbytes);
+                            buf.Append(remain[m, 0, 0]);
+                            n += nbytes;
+                        }
+                        else n += 2 * nbytes;
+                    }
+                    else
+                    {
+                        if (memflag!=0)
+                        {
+                            //memcpy(&buf[n], &vremax[m][0][0], nbytes);
+                            buf.Append(vremax[m, 0, 0]);
+                        }
+
+                        n += nbytes;
+                    }
+                }
+            }
+
+            return n;
+        }
         //public virtual int unpack_grid_one(int, char*);
         //public virtual void compress_grid();
         //public virtual void adapt_grid();

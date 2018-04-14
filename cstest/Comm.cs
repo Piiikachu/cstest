@@ -1,6 +1,9 @@
-﻿using bigint = System.Int64;
+﻿using System.Text;
+using bigint = System.Int64;
+using MPI_Request = System.Int32;
 namespace cstest
 {
+    public delegate void callbackHandler(int nsize,StringBuilder buf);
     public class Comm
     {
         
@@ -21,10 +24,48 @@ namespace cstest
         //public virtual void migrate_cells(int);
         //public int send_cells_adapt(int, int*, char*, char**);
         //public int irregular_uniform(int, int*, char*, int, char**);
-        public void ring(int n, int nper, void* inbuf, int messtag,
-                void (* callback)(int, char*), void* outbuf, int self)
+        public void ring(int n, int nper, StringBuilder inbuf, int messtag,
+                callbackHandler callback, StringBuilder outbuf, int self)
         {
+            MPI_Request request=0;
+            MPI._MPI_Status status;
 
+            int nbytes = n * nper;
+            int maxbytes=0;
+            sparta.mpi.MPI_Allreduce(ref nbytes, ref maxbytes, 1, MPI.MPI_INT, MPI.MPI_MAX, sparta.world);
+
+            StringBuilder buf,bufcopy;
+            bufcopy = new StringBuilder();
+            buf = new StringBuilder();
+            buf.Append(inbuf);
+
+            int next = me + 1;
+            int prev = me - 1;
+            if (next == nprocs) next = 0;
+            if (prev < 0) prev = nprocs - 1;
+
+            for (int loop = 0; loop < nprocs; loop++)
+            {
+                if (me != next)
+                {
+                    sparta.mpi.MPI_Irecv(ref bufcopy, maxbytes, MPI.MPI_CHAR, prev, messtag, sparta.world, ref request);
+                    sparta.mpi.MPI_Send(ref buf, nbytes, MPI.MPI_CHAR, next, messtag, sparta.world);
+                    //sparta.mpi.MPI_Wait(&request, &status);
+                    //sparta.mpi.MPI_Get_count(&status, MPI.MPI_CHAR, &nbytes);
+                    //memcpy(buf, bufcopy, nbytes);
+                    buf.Append(bufcopy);
+                }
+                if (self!=0 || loop != nprocs - 1) callback(nbytes / nper, buf);
+            }
+
+            if (outbuf!=null)
+            {
+                //memcpy(outbuf, buf, nbytes);
+                outbuf.Append(buf);
+            }
+
+            //memory->destroy(buf);
+            //memory->destroy(bufcopy);
         }
 
 

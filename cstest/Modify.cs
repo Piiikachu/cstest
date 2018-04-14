@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using bigint = System.Int64;
 namespace cstest
 {
@@ -27,7 +28,13 @@ namespace cstest
         //public virtual void end_of_step();
 
         //public virtual void add_grid_one(int, int);
-        //public virtual int pack_grid_one(int, char*, int);
+        public virtual int pack_grid_one(int icell,ref StringBuilder buf, int memflag)
+        {
+            int n=0;
+            for (int i = 0; i < n_pergrid; i++)
+                n += fix[list_pergrid[i]].pack_grid_one(icell,ref buf, memflag);
+            return n;
+        }
         //public virtual int unpack_grid_one(int, char*);
         //public virtual void compress_grid(int);
 

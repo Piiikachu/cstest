@@ -1,4 +1,6 @@
-﻿namespace cstest
+﻿using System.Text;
+
+namespace cstest
 {
     public class Fix
     {
@@ -91,26 +93,26 @@
         {
             return 0;
         }
-         
+
         //public virtual void init() { }
         //public virtual void setup() { }
-         
+
         //public virtual void start_of_step() { }
         //public virtual void end_of_step() { }
         //public virtual void add_particle(int, double, double, double, double[]) { }
         //public virtual void gas_react(int) { }
         //public virtual void surf_react(Particle::OnePart*, int &, int &) { }
-         
+
         //public virtual void add_grid_one(int, int) { }
-        //public virtual int pack_grid_one(int, char*, int) { return 0; }
+        public virtual int pack_grid_one(int icell,ref StringBuilder buf, int memflag) { return 0; }
         //public virtual int unpack_grid_one(int, char*) { return 0; }
         //public virtual void compress_grid() { }
         //public virtual void post_compress_grid() { }
-         
+
         //public virtual double compute_scalar() { return 0.0; }
         //public virtual double compute_vector(int) { return 0.0; }
         //public virtual double compute_array(int, int) { return 0.0; }
-         
+
         //public virtual double memory_usage() { return 0.0; }
     }
 }
