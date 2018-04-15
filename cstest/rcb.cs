@@ -160,11 +160,19 @@ namespace cstest
             }
             if (flip == 0)
             {
+                
                 for (i = 0; i < ndot; i++)
                 {
-                    dots[i].x[0] = x[i, 0];
-                    dots[i].x[1] = x[i, 1];
-                    dots[i].x[2] = x[i, 2];
+                    double[] xx = new double[3];
+                    for (j = 0; j < 3; j++)
+                    {
+                        xx[j] = x[i, j];
+                        
+                    }
+                    dots[i].x = xx;
+                    //dots[i].x[0] = x[i, 0];
+                    //dots[i].x[1] = x[i, 1];
+                    //dots[i].x[2] = x[i, 2];
                     dots[i].proc = me;
                     dots[i].index = i;
                 }
@@ -173,9 +181,16 @@ namespace cstest
             {
                 for (i = 0; i < ndot; i++)
                 {
-                    dots[i].x[0] = -x[i, 0];
-                    dots[i].x[1] = -x[i, 1];
-                    dots[i].x[2] = -x[i, 2];
+                    double[] xx = new double[3];
+                    for (j = 0; j < 3; j++)
+                    {
+                        xx[j] = -x[i, j];
+
+                    }
+                    dots[i].x = xx;
+                    //dots[i].x[0] = -x[i, 0];
+                    //dots[i].x[1] = -x[i, 1];
+                    //dots[i].x[2] = -x[i, 2];
                     dots[i].proc = me;
                     dots[i].index = i;
                 }
@@ -691,6 +706,34 @@ namespace cstest
             irregular.exchange_uniform(sinvert.ToString(), Marshal.SizeOf(typeof(Invert)),rinvert.ToString());
 
             // set public variables from requests to send my dots
+            if (noriginal > maxsend)
+            {
+                
+                maxsend = noriginal;
+                sendproc = new int[maxsend];
+                sendindex = new int[maxsend];
+                //memory->create(sendproc, maxsend, "RCB:sendproc");
+                //memory->create(sendindex, maxsend, "RCB:sendindex");
+            }
+
+            for (int i = 0; i < nkeep; i++)
+            {
+                sendproc[recvindex[i]] = me;
+                sendindex[recvindex[i]] = i;
+            }
+
+            for (int i = 0; i < nrecv; i++)
+            {
+                m = rinvert[i].rindex;
+                sendproc[m] = rinvert[i].sproc;
+                sendindex[m] = rinvert[i].sindex;
+            }
+
+            // clean-up
+
+            //memory->destroy(proclist);
+            //memory->destroy(sinvert);
+            //memory->destroy(rinvert);
         }
         //public void check();
         //public void stats(int);

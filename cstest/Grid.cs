@@ -289,12 +289,14 @@ namespace cstest
             c.iparent = iparent;
             c.proc = me;
             c.ilocal = nlocal;
-            c.lo[0] = lo[0];
-            c.lo[1] = lo[1];
-            c.lo[2] = lo[2];
-            c.hi[0] = hi[0];
-            c.hi[1] = hi[1];
-            c.hi[2] = hi[2];
+            c.lo = lo;
+            c.hi = hi;
+            //c.lo[0] = lo[0];
+            //c.lo[1] = lo[1];
+            //c.lo[2] = lo[2];
+            //c.hi[0] = hi[0];
+            //c.hi[1] = hi[1];
+            //c.hi[2] = hi[2];
             c.nsurf = 0;
             c.csurfs = null;
             c.nsplit = 1;
@@ -305,7 +307,12 @@ namespace cstest
             ci.first = -1;
             ci.mask = 1;
             ci.type = (int) Enum4.OUTSIDE;
-            for (int i = 0; i < ncorner; i++) ci.corner[i] = (int)Enum4.UNKNOWN;
+            int[] corner = new int[ncorner];
+            for (int i = 0; i < ncorner; i++)
+            {
+                corner[i] = (int)Enum4.UNKNOWN;
+            }
+            ci.corner = corner;
             ci.weight = 1.0;
 
             if (sparta.domain.dimension == 3)
@@ -316,7 +323,8 @@ namespace cstest
                 ci.volume = (hi[0] - lo[0]) * (hi[1] - lo[1]);
 
             // increment both since are adding an unsplit cell
-
+            cells[nlocal] = c;
+            cinfo[nlocal] = ci;
             nunsplitlocal++;
             nlocal++;
         }
@@ -570,8 +578,9 @@ namespace cstest
             for (int icell = 0; icell < nlocal; icell++)
             {
                 if (cells[icell].nsplit <= 0) continue;
-                lo = new double[Marshal.SizeOf(cells[icell].lo)];
-                hi = new double[Marshal.SizeOf(cells[icell].hi)];
+                
+                lo = new double[3];
+                hi = new double[3];
                 lo = cells[icell].lo;
                 hi = cells[icell].hi;
                 for (i = 0; i < 3; i++)
@@ -811,7 +820,9 @@ namespace cstest
 
             int i, j, k;
             for (k = klo; k <= khi; k++)
+            {
                 for (j = jlo; j <= jhi; j++)
+                {
                     for (i = ilo; i <= ihi; i++)
                     {
                         plo[0] = lo[0] + i * prd[0];
@@ -824,14 +835,18 @@ namespace cstest
                         if (olo[0] >= ohi[0] || olo[1] >= ohi[1] || olo[2] >= ohi[2]) continue;
 
                         box[n].proc = me;
-                        box[n].lo[0] = olo[0];
-                        box[n].lo[1] = olo[1];
-                        box[n].lo[2] = olo[2];
-                        box[n].hi[0] = ohi[0];
-                        box[n].hi[1] = ohi[1];
-                        box[n].hi[2] = ohi[2];
+                        box[n].lo = olo;
+                        box[n].hi = ohi;
+                        //box[n].lo[0] = olo[0];
+                        //box[n].lo[1] = olo[1];
+                        //box[n].lo[2] = olo[2];
+                        //box[n].hi[0] = ohi[0];
+                        //box[n].hi[1] = ohi[1];
+                        //box[n].hi[2] = ohi[2];
                         n++;
                     }
+                }
+            }
 
             return n;
         }
@@ -844,6 +859,15 @@ namespace cstest
                 while (maxcell < nlocal + nghost + n) maxcell += DELTA;
                 cells = new ChildCell[maxcell];
                 //memset(ref cells[oldmax], 0, (maxcell - oldmax) * sizeof(ChildCell));
+            }
+
+            if (nlocal + m >= maxlocal)
+            {
+                int oldmax = maxlocal;
+                while (maxlocal < nlocal + m) maxlocal += DELTA;
+                cinfo = new ChildInfo[maxlocal];
+                  //memory->srealloc(cinfo, maxlocal * sizeof(ChildInfo), "grid:cinfo");
+                //memset(&cinfo[oldmax], 0, (maxlocal - oldmax) * sizeof(ChildInfo));
             }
         }
         //virtual void grow_sinfo(int);
