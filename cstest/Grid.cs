@@ -350,6 +350,7 @@ namespace cstest
             p.hi = new double[3];
             p.lo[0] = lo[0]; p.lo[1] = lo[1]; p.lo[2] = lo[2];
             p.hi[0] = hi[0]; p.hi[1] = hi[1]; p.hi[2] = hi[2];
+            pcells[nparent] = p;
 
             nparent++;
         }
@@ -644,7 +645,7 @@ namespace cstest
             for (i = 0; i < nboxall; i++)
             {
                 if (boxall[i].proc == me) continue;
-                if (box_overlap(bblo, bbhi, boxall[i].lo, boxall[i].hi)) list[nlist++] = i;
+                if (box_overlap(bblo, bbhi, boxall[i].lo, boxall[i].hi)!=0) list[nlist++] = i;
             }
 
             // loop over my owned cells, not including sub cells
@@ -732,13 +733,14 @@ namespace cstest
             Irregular irregular = new Irregular(sparta);
             int recvsize;
             int nrecv = irregular.create_data_variable(nsend, proclist, sizelist,
-                                                        recvsize, comm->commsortflag);
+                                                        out recvsize, sparta.comm.commsortflag);
 
             StringBuilder rbuf = new StringBuilder();
             //memory->create(rbuf, recvsize, "grid:rbuf");
             //memset(rbuf, 0, recvsize);
-
-            irregular.exchange_variable(sbuf, sizelist, rbuf);
+            byte[] sbytebuf = Encoding.UTF8.GetBytes(sbuf.ToString());
+            byte[] rbytebuf = Encoding.UTF8.GetBytes(rbuf.ToString());
+            irregular.exchange_variable(sbytebuf, sizelist, rbytebuf);
             //delete irregular;
 
             // unpack received grid cells as ghost cells
@@ -754,10 +756,85 @@ namespace cstest
                 if (cells[icell].nsurf < 0) nempty++;
         }
 
-        //void box_intersect(double*, double*, double*, double*,
-        //                   double*, double*);
-        //int box_overlap(double*, double*, double*, double*);
-        //int box_periodic(double*, double*, Box*);
+        //maybe ref?
+        void box_intersect(double[] alo, double[] ahi, double[] blo, double[] bhi,double[] lo, double[] hi)
+        {
+            lo[0] = Math.Max(alo[0], blo[0]);
+            hi[0] = Math.Min(ahi[0], bhi[0]);
+            lo[1] = Math.Max(alo[1], blo[1]);
+            hi[1] = Math.Min(ahi[1], bhi[1]);
+            lo[2] = Math.Max(alo[2], blo[2]);
+            hi[2] = Math.Min(ahi[2], bhi[2]);
+        }
+        int box_overlap(double[] alo, double[] ahi, double[] blo, double[] bhi)
+        {
+            double[] lo=new double[3], hi=new double[3];
+            box_intersect(alo, ahi, blo, bhi, lo, hi);
+
+            if (lo[0] > hi[0]) return 0;
+            if (lo[1] > hi[1]) return 0;
+            if (lo[2] > hi[2]) return 0;
+
+            if (lo[0] == hi[0]) return 2;
+            if (lo[1] == hi[1]) return 2;
+            if (lo[2] == hi[2]) return 2;
+
+            return 1;
+        }
+        int box_periodic(double[] lo, double[] hi, Box[] box)
+        {
+            int ilo, ihi, jlo, jhi, klo, khi;
+            ilo = ihi = jlo = jhi = klo = khi = 0;
+
+            int[] bflag = sparta.domain.bflag;
+            if (bflag[0] ==(int)Enum2.PERIODIC)
+            {
+                ilo = -1; ihi = 1;
+            }
+            if (bflag[2] == (int)Enum2.PERIODIC)
+            {
+                jlo = -1; jhi = 1;
+            }
+            if (bflag[4] == (int)Enum2.PERIODIC && sparta.domain.dimension == 3)
+            {
+                klo = -1; khi = 1;
+            }
+
+            double[] boxlo = new double[3], boxhi = new double[3], prd = new double[3];
+            boxlo = sparta.domain.boxlo;
+            boxhi = sparta.domain.boxhi;
+            prd =   sparta.domain.prd;
+
+            double[] plo=new double[3], phi=new double[3], olo=new double[3], ohi=new double[3];
+
+            int n = 0;
+
+            int i, j, k;
+            for (k = klo; k <= khi; k++)
+                for (j = jlo; j <= jhi; j++)
+                    for (i = ilo; i <= ihi; i++)
+                    {
+                        plo[0] = lo[0] + i * prd[0];
+                        phi[0] = hi[0] + i * prd[0];
+                        plo[1] = lo[1] + j * prd[1];
+                        phi[1] = hi[1] + j * prd[1];
+                        plo[2] = lo[2] + k * prd[2];
+                        phi[2] = hi[2] + k * prd[2];
+                        box_intersect(plo, phi, boxlo, boxhi, olo, ohi);
+                        if (olo[0] >= ohi[0] || olo[1] >= ohi[1] || olo[2] >= ohi[2]) continue;
+
+                        box[n].proc = me;
+                        box[n].lo[0] = olo[0];
+                        box[n].lo[1] = olo[1];
+                        box[n].lo[2] = olo[2];
+                        box[n].hi[0] = ohi[0];
+                        box[n].hi[1] = ohi[1];
+                        box[n].hi[2] = ohi[2];
+                        n++;
+                    }
+
+            return n;
+        }
 
         protected virtual void grow_cells(int n, int m)
         {

@@ -441,6 +441,7 @@ namespace cstest
                 string str4 = string.Format("  create/ghost percent = {0:G} {1:G}\n", 100.0 * (time2 - time1) / time_total, 100.0 * (time3 - time2) / time_total);
                 if (sparta.screen!=null)
                 {
+                    Console.WriteLine(str1+str2+str3+str4);
                     StreamWriter sw=  new StreamWriter(sparta.screen);
                     sw.Write(str1);
                     sw.Write(str2);

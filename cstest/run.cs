@@ -11,8 +11,8 @@ namespace cstest
     {
         private SPARTA sparta;
 
-        const int MAXSMALLINT = 2147483647;
-        const Int64 MAXBIGINT = 9223372036854775807;
+        public const int MAXSMALLINT = 2147483647;
+        public const Int64 MAXBIGINT = 9223372036854775807;
 
         public Run(SPARTA sparta)
         {

@@ -1,5 +1,9 @@
 ﻿using System;
 using MPI_Request = System.Int32;
+using bigint = System.Int64;
+using System.IO;
+using System.Text;
+
 namespace cstest
 {
     public class Irregular
@@ -161,7 +165,84 @@ namespace cstest
 
             return nrecvdatum;
         }
-        //public int create_data_variable(int, int*, int*, int &, int sort = 0);
+        public int create_data_variable(int n, int[] proclist, int[] sizes,
+                                    out int recvsize, int sort = 0)
+        {
+            int i;
+            int nrecvdatum = create_data_uniform(n, proclist, sort);
+
+            if (size_send==null)
+            {
+                size_send = new int[nprocs];
+                size_recv = new int[nprocs];
+            }
+
+            if (n> offsetmax)
+            {
+                offsetmax = n;
+                offset_send = new int[offsetmax];
+            }
+
+            int offset = 0;
+            for (i = 0; i < n; i++)
+            {
+                offset_send[i] = offset;
+                offset += sizes[i];
+            }
+            // work1 = # of bytes to send to each proc, including self
+
+            for (i = 0; i < nprocs; i++) work1[i] = 0;
+            for (i = 0; i < n; i++) work1[proclist[i]] += sizes[i];
+
+            // size_send = # of bytes I send to each proc
+            // size_self = # of bytes I copy to self
+            // to balance pattern of send messages:
+            //   each proc starts with iproc > me, continues until iproc = me
+
+            int iproc = me;
+            int isend = 0;
+            for (i = 0; i < nprocs; i++)
+            {
+                iproc++;
+                if (iproc == nprocs) iproc = 0;
+                if (iproc == me) size_self = work1[iproc];
+                else if (work1[iproc] > 0) size_send[isend++] = work1[iproc];
+            }
+
+            // tell receivers how many bytes I send them
+            // sendmaxbytes = largest # of bytes I send in a single message
+
+            sendmaxbytes = 0;
+            for (i = 0; i < nsend; i++)
+            {
+                sparta.mpi.MPI_Send(ref size_send[i], 1, MPI.MPI_INT, proc_send[i], 1, sparta.world);
+                sendmaxbytes = Math.Max(sendmaxbytes, size_send[i]);
+            }
+
+
+            // receive incoming messages
+            // num_recv = # of datums each proc sends me
+            // nrecvdatum = total # of datums I recv
+
+            int nbytes=0;
+            bigint brecvsize = 0;
+            for (i = 0; i < nrecv; i++)
+            {
+                sparta.mpi.MPI_Recv(ref nbytes, 1, MPI.MPI_INT, MPI.MPI_ANY_SOURCE, 1, sparta.world,ref status[0]);
+                size_recv[proc2recv[status[0].MPI_SOURCE]] = nbytes;
+                brecvsize += nbytes;
+            }
+            brecvsize += size_self;
+            
+            if (brecvsize > Run.MAXSMALLINT) 
+                sparta.error.one("Irregular comm recv buffer exceeds 2 GB");
+            recvsize = (int)brecvsize;
+
+            // return # of datums I will receive
+
+            return nrecvdatum;
+
+        }
         //public int augment_data_uniform(int, int*);
         public void exchange_uniform(string sendbuf, int nbytes,string recvbuf)
         {
@@ -198,7 +279,7 @@ namespace cstest
                 {
                     m = index_send[n++];
                     //memcpy(&buf[i * nbytes], &sendbuf[m * nbytes], nbytes);
-                    buf = sendbuf;
+                    buf = Encoding.UTF8.GetBytes( sendbuf);
 
 
                 }
@@ -218,7 +299,63 @@ namespace cstest
 
             if (nrecv != 0) Console.WriteLine("irregular.exchange_uniform()->MPI_waitall");//sparta.mpi.MPI_Waitall(nrecv, request, status);
         }
-        //public void exchange_variable(char*, int*, char*);
+        public void exchange_variable(byte[] sendbuf, int[] nbytes, byte[] recvbuf)
+        {
+            int i, m, n, offset, count;
+
+            // post all receives, starting after self copies
+
+            offset = size_self;
+            for (int irecv = 0; irecv < nrecv; irecv++)
+            {
+                sparta.mpi.MPI_Irecv(ref recvbuf[offset], size_recv[irecv], MPI.MPI_CHAR,
+                      proc_recv[irecv], 0, sparta.world, ref request[irecv]);
+                offset += size_recv[irecv];
+            }
+            // reallocate buf for largest send if necessary
+
+            if (sendmaxbytes > bufmax)
+            {
+                //memory->destroy(buf);
+                bufmax = sendmaxbytes;
+                buf = new byte[bufmax];
+                //memory->create(buf, bufmax, "irregular:buf");
+            }
+            // send each message
+            // pack buf with list of datums
+            // m = index of datum in sendbuf
+            // offset_send[m] = starting loc of datum in sendbuf
+
+            n = 0;
+            for (int isend = 0; isend < nsend; isend++)
+            {
+                offset = 0;
+                count = num_send[isend];
+                for (i = 0; i < count; i++)
+                {
+                    m = index_send[n++];
+                    //memcpy(&buf[offset], &sendbuf[offset_send[m]], nbytes[m]);
+                    Array.Copy(sendbuf, offset_send[m], buf, offset, buf.Length - offset);
+                    offset += nbytes[m];
+                }
+                sparta.mpi.MPI_Send(ref buf, size_send[isend], MPI.MPI_CHAR, proc_send[isend], 0, sparta.world);
+            }
+
+            // copy datums to self, put at beginning of recvbuf
+
+            offset = 0;
+            for (i = 0; i < num_self; i++)
+            {
+                m = index_self[i];
+                //memcpy(&recvbuf[offset], &sendbuf[offset_send[m]], nbytes[m]);
+                Array.Copy(sendbuf, offset_send[m], buf, offset, buf.Length - offset);
+                offset += nbytes[m];
+            }
+
+            // wait on all incoming messages
+
+            if (nrecv != 0) Console.WriteLine("irregular.exchange_variable()->MPI_Waitall");//sparta.mpi.MPI_Waitall(nrecv, request, status);
+        }
         //public void reverse(int, int*);
 
 
@@ -245,7 +382,7 @@ namespace cstest
         protected int[] work1,work2;         // work vectors
         protected MPI_Request[] request;      // MPI requests for posted recvs
         protected MPI._MPI_Status[] status;        // MPI statuses for WaitAll
-        protected string buf;                 // buffer for largest single send message
+        protected byte[] buf;                 // buffer for largest single send message
         protected int copymode;              // 1 if copy of class (prevents deallocation of
                                    //   base class when child copy is destroyed)
 
