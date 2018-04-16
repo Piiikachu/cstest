@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using bigint = System.Int64;
@@ -404,12 +405,394 @@ namespace cstest
             else if (sparta.comm.me == 0)
                 sparta.error.one("Could not acquire nearby ghost cells b/c grid partition is not clumped");
         }
-        //      public void rehash();
-        //      public void find_neighbors();
+        public void rehash()
+        {
+            hash.Clear();
+            for (int icell = 0; icell < nlocal + nghost; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                hash[cells[icell].id] = icell + 1;
+            }
+            for (int icell = 0; icell < nparent; icell++)
+                hash[pcells[icell].id] = -(icell + 1);
+
+            hashfilled = 1;
+        }
+        public void find_neighbors()
+        {
+            int icell, index, nmask, boundary, periodic;
+            cellint[] neigh;
+            cellint id;
+            double[] lo,hi;
+            double[] mout=new double[3];
+
+            if (exist_ghost==0) return;
+
+            int dim = sparta.domain.dimension;
+            int[] bflag = sparta.domain.bflag;
+            double[] boxlo = sparta.domain.boxlo;
+            double[] boxhi = sparta.domain.boxhi;
+
+            // insure all cell IDs (owned, ghost, parent) are hashed
+
+            rehash();
+
+            // set neigh flags and nmask for each owned and ghost child cell
+            // sub cells have same lo/hi as split cell, so their neigh info is the same
+            for (icell = 0; icell < nlocal + nghost; icell++)
+            {
+                lo = cells[icell].lo;
+                hi = cells[icell].hi;
+                neigh = new cellint[6];
+                //neigh = cells[icell].neigh;
+                nmask = 0;
+
+                // generate a point cell_epsilon away from face midpoint, respecting PBC
+                // id_find_face() walks from root cell to find the parent or child cell
+                //   furthest down heirarchy containing pt and entire lo/hi face of icell
+
+                // XLO
+
+                mout[1] = 0.5 * (lo[1] + hi[1]);
+                mout[2] = 0.5 * (lo[2] + hi[2]);
+
+                if (lo[0] == boxlo[0]) boundary = 1;
+                else boundary = 0;
+                if (bflag[(int)Enum1.XLO] == (int)Enum2.PERIODIC) periodic = 1;
+                else periodic = 0;
+
+                if (boundary != 0 && periodic == 0)
+                {
+                    neigh[(int)Enum1.XLO] = 0;
+                    nmask = neigh_encode((int)Enum5.NBOUND, nmask, (int)Enum1.XLO);
+                }
+                else
+                {
+                    if (boundary != 0) mout[0] = boxhi[0] - cell_epsilon;
+                    else mout[0] = lo[0] - cell_epsilon;
+
+                    id = id_find_face(mout, 0, 0, lo, hi);
+                    if (hash[id] == hash[hash.Keys.Last()])
+                    {
+                        neigh[(int)Enum1.XLO] = id;
+                        if (boundary != 0) nmask = neigh_encode((int)Enum5.NPBUNKNOWN, nmask, (int)Enum1.XLO);
+                        else nmask = neigh_encode((int)Enum5.NUNKNOWN, nmask, (int)Enum1.XLO);
+                    }
+                    else
+                    {
+                        index = hash[id];
+                        if (index > 0)
+                        {
+                            neigh[(int)Enum1.XLO] = index - 1;
+                            if (boundary != 0) nmask = neigh_encode((int)Enum5.NPBCHILD, nmask, (int)Enum1.XLO);
+                            else nmask = neigh_encode((int)Enum5.NCHILD, nmask, (int)Enum1.XLO);
+                        }
+                        else
+                        {
+                            neigh[(int)Enum1.XLO] = -index - 1;
+                            if (boundary != 0) nmask = neigh_encode((int)Enum5.NPBPARENT, nmask, (int)Enum1.XLO);
+                            else nmask = neigh_encode((int)Enum5.NPARENT, nmask, (int)Enum1.XLO);
+                        }
+                    }
+                }
+
+                // XHI
+                if (hi[0] == boxhi[0]) boundary = 1;
+                else boundary = 0;
+                if (bflag[(int)Enum1.XHI] == (int)Enum2.PERIODIC) periodic = 1;
+                else periodic = 0;
+                if (boundary!=0 && periodic==0)
+                {
+                    neigh[(int)Enum1.XHI] = 0;
+                    nmask = neigh_encode((int)Enum5.NBOUND, nmask, (int)Enum1.XHI);
+                }
+                else
+                {
+                    if ( boundary!=0 ) mout[0] = boxlo[0] + cell_epsilon;
+                    else mout[0] = hi[0] + cell_epsilon;
+
+                    id = id_find_face(mout, 0, 0, lo, hi);
+
+                    if (hash[id] == hash[hash.Keys.Last()])
+                    {
+                        neigh[(int)Enum1.XHI] = id;
+                        if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBUNKNOWN, nmask, (int)Enum1.XHI);
+                        else nmask = neigh_encode((int)Enum5.NUNKNOWN, nmask, (int)Enum1.XHI);
+                    }
+                    else
+                    {
+                        index = hash[id];
+                        if (index > 0)
+                        {
+                            neigh[(int)Enum1.XHI] = index - 1;
+                            if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBCHILD, nmask, (int)Enum1.XHI);
+                            else nmask = neigh_encode((int)Enum5.NCHILD, nmask, (int)Enum1.XHI);
+                        }
+                        else
+                        {
+                            neigh[(int)Enum1.XHI] = -index - 1;
+                            if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBPARENT, nmask, (int)Enum1.XHI);
+                            else nmask = neigh_encode((int)Enum5.NPARENT, nmask, (int)Enum1.XHI);
+                        }
+                    }
+                }
+
+                // YLO
+
+                mout[0] = 0.5 * (lo[0] + hi[0]);
+                mout[2] = 0.5 * (lo[2] + hi[2]);
+
+                if (lo[1] == boxlo[1]) boundary = 1;
+                else boundary = 0;
+                if (bflag[(int)Enum1.YLO] == (int)Enum2.PERIODIC) periodic = 1;
+                else periodic = 0;
+                if (boundary!=0 && periodic==0)
+                {
+                    neigh[(int)Enum1.YLO] = 0;
+                    nmask = neigh_encode((int)Enum5.NBOUND, nmask, (int)Enum1.YLO);
+                }
+                else
+                {
+                    if ( boundary!=0 ) mout[1] = boxhi[1] - cell_epsilon;
+                    else mout[1] = lo[1] - cell_epsilon;
+
+                    id = id_find_face(mout, 0, 1, lo, hi);
+
+                    if (hash[id] == hash[hash.Keys.Last()])
+                    {
+                        neigh[(int)Enum1.YLO] = id;
+                        if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBUNKNOWN, nmask, (int)Enum1.YLO);
+                        else nmask = neigh_encode((int)Enum5.NUNKNOWN, nmask, (int)Enum1.YLO);
+                    }
+                    else
+                    {
+                        index = hash[id];
+                        if (index > 0)
+                        {
+                            neigh[(int)Enum1.YLO] = index - 1;
+                            if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBCHILD, nmask, (int)Enum1.YLO);
+                            else nmask = neigh_encode((int)Enum5.NCHILD, nmask, (int)Enum1.YLO);
+                        }
+                        else
+                        {
+                            neigh[(int)Enum1.YLO] = -index - 1;
+                            if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBPARENT, nmask, (int)Enum1.YLO);
+                            else nmask = neigh_encode((int)Enum5.NPARENT, nmask, (int)Enum1.YLO);
+                        }
+                    }
+                }
+
+                // YHI
+
+                if (hi[1] == boxhi[1]) boundary = 1;
+                else boundary = 0;
+                if (bflag[(int)Enum1.YHI] == (int)Enum2.PERIODIC) periodic = 1;
+                else periodic = 0;
+
+                if (boundary!=0 && periodic==0)
+                {
+                    neigh[(int)Enum1.YHI] = 0;
+                    nmask = neigh_encode((int)Enum5.NBOUND, nmask, (int)Enum1.YHI);
+                }
+                else
+                {
+                    if ( boundary!=0 ) mout[1] = boxlo[1] + cell_epsilon;
+                    else mout[1] = hi[1] + cell_epsilon;
+
+                    id = id_find_face(mout, 0, 1, lo, hi);
+
+                    if (hash[id] == hash[hash.Keys.Last()])
+                    {
+                        neigh[(int)Enum1.YHI] = id;
+                        if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBUNKNOWN, nmask, (int)Enum1.YHI);
+                        else nmask = neigh_encode((int)Enum5.NUNKNOWN, nmask, (int)Enum1.YHI);
+                    }
+                    else
+                    {
+                        index = hash[id];
+                        if (index > 0)
+                        {
+                            neigh[(int)Enum1.YHI] = index - 1;
+                            if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBCHILD, nmask, (int)Enum1.YHI);
+                            else nmask = neigh_encode((int)Enum5.NCHILD, nmask, (int)Enum1.YHI);
+                        }
+                        else
+                        {
+                            neigh[(int)Enum1.YHI] = -index - 1;
+                            if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBPARENT, nmask, (int)Enum1.YHI);
+                            else nmask = neigh_encode((int)Enum5.NPARENT, nmask, (int)Enum1.YHI);
+                        }
+                    }
+                }
+
+
+                // ZLO
+                // treat boundary as non-periodic if 2d, so is flagged as NBOUND
+
+                mout[0] = 0.5 * (lo[0] + hi[0]);
+                mout[1] = 0.5 * (lo[1] + hi[1]);
+
+                if (lo[2] == boxlo[2]) boundary = 1;
+                else boundary = 0;
+                if (bflag[(int)Enum1.ZLO] == (int)Enum2.PERIODIC && dim == 3) periodic = 1;
+                else periodic = 0;
+
+                if (boundary!=0 && periodic==0)
+                {
+                    neigh[(int)Enum1.ZLO] = 0;
+                    nmask = neigh_encode((int)Enum5.NBOUND, nmask, (int)Enum1.ZLO);
+                }
+                else
+                {
+                    if ( boundary!=0 ) mout[2] = boxhi[2] - cell_epsilon;
+                    else mout[2] = lo[2] - cell_epsilon;
+
+                    id = id_find_face(mout, 0, 2, lo, hi);
+
+                    if (hash[id] == hash[hash.Keys.Last()])
+                    {
+                        neigh[(int)Enum1.ZLO] = id;
+                        if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBUNKNOWN, nmask, (int)Enum1.ZLO);
+                        else nmask = neigh_encode((int)Enum5.NUNKNOWN, nmask, (int)Enum1.ZLO);
+                    }
+                    else
+                    {
+                        index = hash[id];
+                        if (index > 0)
+                        {
+                            neigh[(int)Enum1.ZLO] = index - 1;
+                            if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBCHILD, nmask, (int)Enum1.ZLO);
+                            else nmask = neigh_encode((int)Enum5.NCHILD, nmask, (int)Enum1.ZLO);
+                        }
+                        else
+                        {
+                            neigh[(int)Enum1.ZLO] = -index - 1;
+                            if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBPARENT, nmask, (int)Enum1.ZLO);
+                            else nmask = neigh_encode((int)Enum5.NPARENT, nmask, (int)Enum1.ZLO);
+                        }
+                    }
+                }
+                // ZHI
+                // treat boundary as non-periodic if 2d, so is flagged as NBOUND
+
+                if (hi[2] == boxhi[2]) boundary = 1;
+                else boundary = 0;
+                if (bflag[(int)Enum1.ZHI] == (int)Enum2.PERIODIC && dim == 3) periodic = 1;
+                else periodic = 0;
+
+                if (boundary!=0 && periodic==0)
+                {
+                    neigh[(int)Enum1.ZHI] = 0;
+                    nmask = neigh_encode((int)Enum5.NBOUND, nmask, (int)Enum1.ZHI);
+                }
+                else
+                {
+                    if ( boundary!=0 ) mout[2] = boxlo[2] + cell_epsilon;
+                    else mout[2] = hi[2] + cell_epsilon;
+
+                    id = id_find_face(mout, 0, 2, lo, hi);
+
+                    if (hash[id] == hash[hash.Keys.Last()])
+                    {
+                        neigh[(int)Enum1.ZHI] = id;
+                        if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBUNKNOWN, nmask, (int)Enum1.ZHI);
+                        else nmask = neigh_encode((int)Enum5.NUNKNOWN, nmask, (int)Enum1.ZHI);
+                    }
+                    else
+                    {
+                        index = hash[id];
+                        if (index > 0)
+                        {
+                            neigh[(int)Enum1.ZHI] = index - 1;
+                            if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBCHILD, nmask, (int)Enum1.ZHI);
+                            else nmask = neigh_encode((int)Enum5.NCHILD, nmask, (int)Enum1.ZHI);
+                        }
+                        else
+                        {
+                            neigh[(int)Enum1.ZHI] = -index - 1;
+                            if ( boundary!=0 ) nmask = neigh_encode((int)Enum5.NPBPARENT, nmask, (int)Enum1.ZHI);
+                            else nmask = neigh_encode((int)Enum5.NPARENT, nmask, (int)Enum1.ZHI);
+                        }
+                    }
+                }
+                cells[icell].neigh = neigh;
+                cells[icell].nmask = nmask;
+            }
+            // insure no UNKNOWN neighbors for owned cell
+            // else cannot move particle to new proc to continue move
+            int n1, n2, n3, n4, n5, n6;
+
+            int flag = 0;
+            for (icell = 0; icell < nlocal; icell++)
+            {
+                nmask = cells[icell].nmask;
+                n1 = neigh_decode(nmask, (int)Enum1.XLO);
+                n2 = neigh_decode(nmask, (int)Enum1.XHI);
+                n3 = neigh_decode(nmask, (int)Enum1.YLO);
+                n4 = neigh_decode(nmask, (int)Enum1.YHI);
+                n5 = neigh_decode(nmask, (int)Enum1.ZLO);
+                n6 = neigh_decode(nmask, (int)Enum1.ZHI);
+                if (n1 == (int)Enum5.NUNKNOWN || n2 ==   (int)Enum5.NUNKNOWN || n3 ==   (int)Enum5.NUNKNOWN ||
+                    n4 == (int)Enum5.NUNKNOWN || n5 ==   (int)Enum5.NUNKNOWN || n6 ==   (int)Enum5.NUNKNOWN) flag++;
+                if (n1 == (int)Enum5.NPBUNKNOWN || n2 == (int)Enum5.NPBUNKNOWN || n3 == (int)Enum5.NPBUNKNOWN ||
+                    n4 == (int)Enum5.NPBUNKNOWN || n5 == (int)Enum5.NPBUNKNOWN || n6 == (int)Enum5.NPBUNKNOWN) flag++;
+            }
+            int flagall=0;
+            sparta.mpi.MPI_Allreduce(ref flag, ref flagall, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+
+            if (flagall!=0)
+            {
+                string str = string.Format("Owned cells with unknown neighbors = {0}", flagall);
+                sparta.error.all(str);
+            }
+        }
         //      public void unset_neighbors();
         //      public void reset_neighbors();
         //      public void set_inout();
-        //      public void check_uniform();
+        public void check_uniform()
+        {
+            // maxlevel = max level of any child cell in grid
+
+            maxlevel = 0;
+            for (int i = 0; i < nparent; i++)
+                maxlevel = Math.Max(maxlevel, pcells[i].level);
+            maxlevel++;
+
+            // grid is uniform only if parents of all child cells are at same level
+
+            int plevel = -1;
+            for (int i = 0; i < nlocal; i++)
+                plevel = Math.Max(plevel, pcells[cells[i].iparent].level);
+
+            int all=0;
+            sparta.mpi.MPI_Allreduce(ref plevel, ref all, 1, MPI.MPI_INT, MPI.MPI_MAX, sparta.world);
+
+            uniform = 1;
+            for (int i = 0; i < nlocal; i++)
+                if (pcells[cells[i].iparent].level != all) uniform = 0;
+
+            sparta.mpi.MPI_Allreduce(ref uniform, ref all, 1,MPI.MPI_INT, MPI.MPI_MIN, sparta.world);
+            if (all==0) uniform = 0;
+
+            if (uniform!=0)
+            {
+                int[] lflag = new int[maxlevel];
+                for (int i = 0; i < maxlevel; i++) lflag[i] = 0;
+
+                int level;
+                unx = uny = unz = 1;
+
+                for (int i = 0; i < nparent; i++)
+                {
+                    level = pcells[i].level;
+                    if (lflag[level]!=0) continue;
+                    lflag[level] = 1;
+                    unx *= pcells[i].nx;
+                    uny *= pcells[i].ny;
+                    unz *= pcells[i].nz;
+                }
+            }
+        }
         //      public void type_check(int flag = 1);
 
 
@@ -458,27 +841,27 @@ namespace cstest
 
         //      // grid_id.cpp
 
-       
+
 
         //      // extract/return neighbor flag for iface from per-cell nmask
         //      // inlined for efficiency
 
-        //      inline int neigh_decode(int nmask, int iface)
-        //      {
-        //          return (nmask ref  neighmask[iface]) >> neighshift[iface];
-        //      }
+        int neigh_decode(int nmask, int iface)
+        {
+            return (nmask & neighmask[iface]) >> neighshift[iface];
+        }
 
         //      // overwrite neighbor flag for iface in per-cell nmask
         //      // first line zeroes the iface bits via one's complement of mask
         //      // inlined for efficiency
         //      // return updated nmask
 
-        //      inline int neigh_encode(int flag, int nmask, int iface)
-        //      {
-        //          nmask ref = ~neighmask[iface];
-        //          nmask |= flag << neighshift[iface];
-        //          return nmask;
-        //      }
+        int neigh_encode(int flag, int nmask, int iface)
+        {
+            nmask &= ~neighmask[iface];
+            nmask |= flag << neighshift[iface];
+            return nmask;
+        }
 
 
         // protected:

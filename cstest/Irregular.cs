@@ -10,7 +10,108 @@ namespace cstest
     {
         public static int[] proc_recv_copy;
 
-        //public void create_procs(int, int*, int sort = 0);
+        public void create_procs(int n, int[] proclist, int sort = 0)
+        {
+            int i, m;
+
+            // setup for collective comm
+            // work1 = 1 for procs I send to, set self to 0
+            // work2 = 1 for all procs, used for ReduceScatter
+            // nsend = # of procs I send messages to, not including self
+
+            for (i = 0; i < nprocs; i++)
+            {
+                work1[i] = 0;
+                work2[i] = 1;
+            }
+            for (i = 0; i < n; i++) work1[proclist[i]] = 1;
+
+            nsend = n;
+            if (work1[me]!=0)
+            {
+                work1[me] = 0;
+                nsend--;
+            }
+            // nrecv = # of procs I receive messages from, not including self
+            // options for performing ReduceScatter operation
+            // some are more efficient on some machines at big sizes
+
+            //sparta.mpi.MPI_Reduce_scatter(work1, &nrecv, work2, MPI_INT, MPI_SUM, world);
+
+            // proc_send = procs I send to
+            // to balance pattern of send messages:
+            //   each proc starts with iproc > me, continues until iproc = me
+            // reset work1 to store which send message each proc corresponds to
+            //   used by augmen_data()
+            for (i = 0; i < nprocs; i++) work1[i] = 0;
+            for (i = 0; i < n; i++) work1[proclist[i]] = 1;
+            work1[me] = 0;
+
+            int iproc = me;
+            int isend = 0;
+            for (i = 0; i < nprocs; i++)
+            {
+                iproc++;
+                if (iproc == nprocs) iproc = 0;
+                if (iproc == me) continue;
+                if (work1[iproc]!=0)
+                {
+                    proc_send[isend] = iproc;
+                    work1[iproc] = isend;
+                    isend++;
+                }
+            }
+
+            // tell receivers I send to them
+
+            m = 0;
+            for (i = 0; i < nsend; i++)
+                sparta.mpi.MPI_Send(ref m, 0, MPI.MPI_INT, proc_send[i], 0, sparta.world);
+
+            // receive incoming messages
+            // proc_recv = procs I recv from
+
+            for (i = 0; i < nrecv; i++)
+            {
+                sparta.mpi.MPI_Recv(ref m, 0, MPI.MPI_INT, MPI.MPI_ANY_SOURCE, 0, sparta.world,ref status[0]);
+                proc_recv[i] = status[0].MPI_SOURCE;
+            }
+
+            // sort proc_recv by proc ID if requested
+            // useful for debugging to insure reproducible ordering of received datums
+
+            if (sort!=0)
+            {
+                int[] order = new int[nrecv];
+                int[] proc_recv_ordered = new int[nrecv];
+
+                for (i = 0; i < nrecv; i++) order[i] = i;
+                proc_recv_copy = proc_recv;
+                //qsort(order, nrecv, sizeof(int), compare_standalone);
+                Array.Sort(order);
+                int j;
+                for (i = 0; i < nrecv; i++)
+                {
+                    j = order[i];
+                    proc_recv_ordered[i] = proc_recv[j];
+                }
+
+                //memcpy(proc_recv, proc_recv_ordered, nrecv * sizeof(int));
+                //delete[] order;
+                //delete[] proc_recv_ordered;
+            }
+
+            // proc2recv[I] = which recv the Ith proc ID is
+            // will only be accessed by procs I actually receive from
+
+            for (i = 0; i < nrecv; i++) proc2recv[proc_recv[i]] = i;
+
+            // barrier to insure all MPI_ANY_SOURCE messages are received
+            // else another proc could proceed to augment_data() and send to me
+
+            sparta.mpi.MPI_Barrier(sparta.world);
+
+        }
         public int create_data_uniform(int n, int[] proclist, int sort = 0)
         {
             int i, m;

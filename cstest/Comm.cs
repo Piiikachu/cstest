@@ -19,7 +19,34 @@ namespace cstest
 
 
         //public void init() { }
-        //public void reset_neighbors();
+        public void reset_neighbors()
+        {
+            neighflag = 0;
+            if (commpartstyle !=0|| sparta.grid.clumped==0) return;
+            neighflag = 1;
+
+            if (neighlist == null)
+            {
+                neighlist = new int[nprocs];
+                //memory->create(neighlist, nprocs, "comm:neighlist");
+            }
+
+            for (int i = 0; i < nprocs; i++) neighlist[i] = 0;
+
+            Grid.ChildCell[] cells = sparta.grid.cells;
+            int nglocal = sparta.grid.nlocal;
+            int ntotal = nglocal + sparta.grid.nghost;
+
+            for (int icell = nglocal; icell < ntotal; icell++)
+                neighlist[cells[icell].proc] = 1;
+            neighlist[me] = 0;
+
+            nneigh = 0;
+            for (int i = 0; i < nprocs; i++)
+                if (neighlist[i]!=0) neighlist[nneigh++] = i;
+
+            iparticle.create_procs(nneigh, neighlist, commsortflag);
+        }
         //public int migrate_particles(int, int*);
         //public virtual void migrate_cells(int);
         //public int send_cells_adapt(int, int*, char*, char**);

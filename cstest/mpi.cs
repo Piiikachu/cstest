@@ -155,7 +155,9 @@ namespace cstest
         }
         public double MPI_Wtime()
         {
-            return DateTime.Now.Millisecond;
+            int s = DateTime.Now.Second;
+            int ms= DateTime.Now.Millisecond;
+            return s + ms / 1000;
         }
 
         //static 

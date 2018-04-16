@@ -420,10 +420,9 @@ namespace cstest
 
             sparta.grid.setup_owned();
             sparta.grid.acquire_ghosts();
-            //todo: creategrid.command grid
-            //sparta.grid.find_neighbors();
-           // sparta.grid.check_uniform();
-            //sparta.comm.reset_neighbors();
+            sparta.grid.find_neighbors();
+            sparta.grid.check_uniform();
+            sparta.comm.reset_neighbors();
 
             sparta.mpi.MPI_Barrier(sparta.world);
             double time3 = sparta.mpi.MPI_Wtime();

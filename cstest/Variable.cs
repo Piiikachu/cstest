@@ -3,6 +3,7 @@ using System.IO;
 
 namespace cstest
 {
+
     public class Variable
     {
         public const int VARDELTA = 4;
@@ -13,19 +14,21 @@ namespace cstest
 
         //public const int MYROUND(a) (( a-floor(a) ) >= .5) ? ceil(a) : floor(a)
 
-        enum Enum1:int{
+        enum Enum1 : int
+        {
             INDEX, LOOP, WORLD, UNIVERSE, ULOOP, STRING, GETENV,
             SCALARFILE, FORMAT, EQUAL, PARTICLE, GRID, SURF, INTERNAL
         };
-        enum Enum2{ ARG, OP };
+        enum Enum2 { ARG, OP };
 
         // customize by adding a function
         // if add before OR,
         // also set precedence level in constructor and precedence length in *.h
 
-        enum Precedence: int{
-            DONE=0, ADD=5, SUBTRACT=5, MULTIPLY=6, DIVIDE=6, CARAT=7, MODULO=6, UNARY=8,
-            NOT=8, EQ=3, NE=3, LT=4, LE=4, GT=4, GE=4, AND=2, OR=1,
+        enum Precedence : int
+        {
+            DONE = 0, ADD = 5, SUBTRACT = 5, MULTIPLY = 6, DIVIDE = 6, CARAT = 7, MODULO = 6, UNARY = 8,
+            NOT = 8, EQ = 3, NE = 3, LT = 4, LE = 4, GT = 4, GE = 4, AND = 2, OR = 1,
             SQRT, EXP, LN, LOG, ABS, SIN, COS, TAN, ASIN, ACOS, ATAN, ATAN2,
             RANDOM, NORMAL, CEIL, FLOOR, ROUND, RAMP, STAGGER, LOGFREQ, STRIDE,
             VDISPLACE, SWIGGLE, CWIGGLE,
@@ -34,7 +37,7 @@ namespace cstest
 
         // customize by adding a special function
 
-        enum Enum4{ SUM, XMIN, XMAX, AVE, TRAP, SLOPE };
+        enum Enum4 { SUM, XMIN, XMAX, AVE, TRAP, SLOPE };
 
         public const int INVOKED_SCALAR = 1;
         public const int INVOKED_VECTOR = 2;
@@ -56,6 +59,7 @@ namespace cstest
         private int[] which;              // next available value for each variable
         private int[] pad;                // 1 = pad loop/uloop variables with 0s, 0 = no pad
         //private VarReader[] reader;   // variable that reads from file
+        private VarReader reader;
         private string[][] data;            // str value of each variable's values
         private double[] dvalue;          // single numeric value for internal variables
 
@@ -65,7 +69,7 @@ namespace cstest
         RanPark randomparticle;  // RNG for particle-style vars
 
         //private int[] precedence=new int[17];      // precedence level of math operators
-                                         // set length to include up to OR in enum
+        // set length to include up to OR in enum
 
         private int treestyle;           // tree being used for particle or grid-style var
 
@@ -99,7 +103,7 @@ namespace cstest
             num = null;
             which = null;
             pad = null;
-            //reader = null;
+            reader = null;
             data = null;
             dvalue = null;
 
@@ -296,7 +300,7 @@ namespace cstest
         //private void remove(int);
         //private void grow()
         //{
-            
+
         //}
         //private void Copy(int narg, string[] from, string[] to)
         //{
@@ -324,61 +328,59 @@ namespace cstest
         //private char* find_next_comma(char*);
         //private void print_tree(Tree*, int);
         //private double* add_storage(double*);
+
+
+        private class VarReader
+        {
+            int me, style;
+            FileStream fp;
+
+            private SPARTA sparta;
+
+            public VarReader(SPARTA sparta,string str,string file,int flag)
+            {
+                this.sparta = sparta;
+                me = sparta.comm.me;
+                style = flag;
+
+                if (me == 0)
+                {
+                    fp = new FileStream( file, FileMode.Open,FileAccess.Read);
+                    if (fp == null)
+                    {
+                        string strstr=string.Format( "Cannot open file variable file {0}", file);
+                        sparta.error.one(strstr);
+                    }
+                }
+                else fp = null;
+            }
+            //public int read_scalar(string str)
+            //{
+            //    int n=0;
+            //    string ptr;
+
+            //    // read one string from file
+
+            //    if (me == 0)
+            //    {
+            //        while (true)
+            //        {
+            //            if (fgets(str, MAXLINE, fp) == NULL) n = 0;
+            //            else n = strlen(str);
+            //            if (n == 0) break;                                 // end of file
+            //            str[n - 1] = '\0';                                   // strip newline
+            //            if ((ptr = strchr(str, '#'))) *ptr = '\0';          // strip comment
+            //            if (strtok(str, " \t\n\r\f") == NULL) continue;     // skip if blank
+            //            n = strlen(str) + 1;
+            //            break;
+            //        }
+            //    }
+
+            //    sparta.mpi.MPI_Bcast(ref n, 1, MPI.MPI_INT, 0, sparta.world);
+            //    if (n == 0) return 1;
+            //    sparta.mpi.MPI_Bcast(ref str, n, MPI.MPI_CHAR, 0, sparta.world);
+            //    return 0;
+            //}
+        }
     }
-
-    //public class VarReader
-    //{
-    //    private SPARTA sparta;
-    //    public VarReader(SPARTA sparta, char*, string file, int flag)
-    //    {
-    //        this.sparta = sparta;
-    //        me =sparta.comm.me;
-    //        style = flag;
-
-    //        if (me == 0)
-    //        {
-    //            fp = fopen(file, "r");
-    //            if (fp == null)
-    //            {
-    //                char str[128];
-    //                sprintf(str, "Cannot open file variable file %s", file);
-    //                sparta.error.one(FLERR, str);
-    //            }
-    //        }
-    //        else fp = null;
-    //    }
-    //    public int read_scalar(string str)
-    //    {
-    //        int n;
-    //        string ptr;
-
-    //        // read one string from file
-
-    //        if (me == 0)
-    //        {
-    //            while (true)
-    //            {
-    //                if (fgets(str, MAXLINE, fp) == null) n = 0;
-    //                else n = strlen(str);
-    //                if (n == 0) break;                                 // end of file
-    //                str[n - 1] = '\0';                                   // strip newline
-    //                if ((ptr = strchr(str, '#'))) *ptr = '\0';          // strip comment
-    //                if (strtok(str, " \t\n\r\f") == null) continue;     // skip if blank
-    //                n = strlen(str) + 1;
-    //                break;
-    //            }
-    //        }
-
-    //        sparta.mpi.MPI_Bcast(out n, 1, MPI.MPI_INT, 0, sparta.world);
-    //        if (n == 0) return 1;
-    //        sparta.mpi.MPI_Bcast(str, n, MPI.MPI_CHAR, 0, sparta.world);
-    //        return 0;
-    //    }
-
-    //    private int me, style;
-    //    private FileStream fp;
-    //}
-
-
-
 }

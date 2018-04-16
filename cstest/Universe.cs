@@ -38,8 +38,7 @@ namespace cstest
             nworlds = 0;
             procs_per_world = null;
             root_proc = null;
-
-            //memory->create(uni2orig, nprocs, "universe:uni2orig");
+            
             int[] uni2orig = new int[nprocs];
             for (int i = 0; i < nprocs; i++) uni2orig[i] = i;
         }
