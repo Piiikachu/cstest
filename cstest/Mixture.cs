@@ -135,8 +135,131 @@ namespace cstest
                 sparta.particle.mixture[sparta.particle.nmixture - 1].copy(this);
             }
         }
-        //public void init();
-        //public int init_fraction(int[], double[], double[], double[]);
+        public void init()
+        {
+            // global attributes
+
+            if (nrho_flag!=0) nrho = nrho_user;
+            else nrho = sparta.update.nrho;
+            if (vstream_flag!=0)
+            {
+                vstream[0] = vstream_user[0];
+                vstream[1] = vstream_user[1];
+                vstream[2] = vstream_user[2];
+            }
+            else
+            {
+                vstream[0] = sparta.update.vstream[0];
+                vstream[1] = sparta.update.vstream[1];
+                vstream[2] = sparta.update.vstream[2];
+            }
+            if (temp_thermal_flag!=0) temp_thermal = temp_thermal_user;
+            else temp_thermal = sparta.update.temp_thermal;
+            if (temp_rot_flag != 0) temp_rot = temp_rot_user;
+            else temp_rot = temp_thermal;
+            if (temp_vib_flag != 0) temp_vib = temp_vib_user;
+            else temp_vib = temp_thermal;
+
+            // mixture temperarate cannot be 0.0 if streaming velocity is 0.0
+
+            if (temp_thermal == 0.0 &&
+                vstream[0] == 0.0 && vstream[1] == 0.0 && vstream[2] == 0.0)
+                sparta.error.all("Mixture streaming velocity and temperature cannot both be zero");
+
+            // initialize all per-species fraction and cummulative values
+            // account for both explicitly and implicitly set fractions
+
+            int err = init_fraction(fraction_flag, fraction_user, fraction, cummulative);
+
+            if (err != 0)
+            {
+                string str=string.Format( "Mixture {0} fractions exceed 1.0", id);
+                sparta.error.all(str);
+            }
+
+            // vscale = factor to scale Gaussian unit variance by
+            //          to get thermal distribution of velocities
+            // per-species value since includes species mass
+
+            for (int i = 0; i < nspecies; i++)
+            {
+                int index = species[i];
+                vscale[i] = Math.Sqrt(2.0 * sparta.update.boltz * temp_thermal /
+                         sparta.particle.species[index].mass);
+            }
+
+            // setup species2group and species2species
+            species2group = new int[sparta.particle.nspecies];
+           // memory->create(species2group, particle->nspecies, "mixture:species2group");
+            for (int i = 0; i < sparta.particle.nspecies; i++) species2group[i] = -1;
+            for (int i = 0; i < nspecies; i++) species2group[species[i]] = mix2group[i];
+
+            //memory->destroy(species2species);
+            species2species = new int[sparta.particle.nspecies];
+            //memory->create(species2species, particle->nspecies, "mixture:species2group");
+            for (int i = 0; i < sparta.particle.nspecies; i++) species2species[i] = -1;
+            for (int i = 0; i < nspecies; i++) species2species[species[i]] = i;
+
+            // setup groupsize
+
+            //delete[] groupsize;
+            groupsize = new int[ngroup];
+            for (int i = 0; i < ngroup; i++) groupsize[i] = 0;
+            for (int i = 0; i < nspecies; i++) groupsize[mix2group[i]]++;
+
+            // setup groupspecies
+
+            //memory->destroy(groupspecies);
+            groupspecies = new int[ngroup][];
+            int a=0;
+            for (int i = 0; i < ngroup; i++)
+            {
+                a += groupsize[i];
+            }
+            int[] data = new int[a];
+            int m = 0;
+            
+            for (int i = 0; i < ngroup; i++)
+            {
+                int[] mdata = new int[a - m];
+                Array.Copy(data, m, mdata, 0, a - m);
+                groupspecies[i] = mdata;
+                m += groupsize[i];
+            }
+            //memory->create_ragged(groupspecies, ngroup, groupsize, "mixture:groupspecies");
+
+            for (int i = 0; i < ngroup; i++) groupsize[i] = 0;
+            for (int i = 0; i < nspecies; i++)
+                groupspecies[mix2group[i]][groupsize[mix2group[i]]++] = species[i];
+        }
+        public int init_fraction(int[] fflag, double[] fuser, double[] f, double[] c)
+        {
+            // sum = total frac for species with explicity set fractions
+            // nimplicit = number of unset species
+
+            double sum = 0.0;
+            int nimplicit = 0;
+            for (int i = 0; i < nspecies; i++)
+            {
+                if (fflag[i]!=0) sum += fuser[i];
+                else nimplicit++;
+            }
+
+            if (sum > 1.0) return 1;
+
+            // fraction for each unset species = equal portion of unset remainder
+            // cummulative = cummulative fraction across species
+
+            for (int i = 0; i < nspecies; i++)
+            {
+                if (fflag[i] != 0) f[i] = fuser[i];
+                else f[i] = (1.0 - sum) / nimplicit;
+                if (i != 0) c[i] = c[i - 1] + f[i];
+                else c[i] = f[i];
+            }
+            if (nspecies != 0) c[nspecies - 1] = 1.0;
+            return 0;
+        }
         public void add_species_default(string name)
         {
             int index = sparta.particle.find_species(name);

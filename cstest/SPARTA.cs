@@ -628,7 +628,7 @@ namespace cstest
         public void init()
         {
             update.init();
-            //particle.init();
+            particle.init();
             //comm.init();
             //domain.init();
             //grid.init();

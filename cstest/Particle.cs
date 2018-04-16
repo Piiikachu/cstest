@@ -94,9 +94,9 @@ namespace cstest
         public int[] esize;               // size = 0 for vector, N for array columns
         public int[] ewhich;              // index into eivec,eiarray,edvec,edarray for data
          
-        public int[,] eivec;              // pointer to each integer vector
+        public int[][] eivec;              // pointer to each integer vector
         public int[][][] eiarray;           // pointer to each integer array
-        public double[,] edvec;           // pointer to each double vector
+        public double[][] edvec;           // pointer to each double vector
         public double[][][] edarray;        // pointer to each double array
          
          // restart buffers, filled by read_restart
@@ -105,11 +105,47 @@ namespace cstest
         public string particle_restart;
         
         public int copy, copymode;        // 1 if copy of class (prevents deallocation of
-                                   //  base class when child copy is destroyed)
+                                          //  base class when child copy is destroyed)
 
         // methods
 
-        //public void init();
+        public void init()
+        {
+            for (int i = 0; i < nmixture; i++) mixture[i].init();
+
+            // RNG for particle weighting
+
+            if (wrandom==null)
+            {
+                wrandom = new RanPark(sparta.update.ranmaster.uniform());
+                double seed = sparta.update.ranmaster.uniform();
+                wrandom.reset(seed, me, 100);
+            }
+
+            // if first run after reading a restart file,
+            // delete any custom particle attributes that have not been re-defined
+            // use nactive since remove_custom() may alter ncustom
+
+            if (custom_restart_flag!= null)
+            {
+                int nactive = ncustom;
+                for (int i = 0; i < nactive; i++)
+                    if (custom_restart_flag[i] == 0) remove_custom(i);
+                //delete[] custom_restart_flag;
+                custom_restart_flag = null;
+            }
+
+            // reallocate cellcount and first lists as needed
+            // NOTE: when grid becomes dynamic, will need to do this in sort()
+
+            //if (maxgrid < grid->nlocal) {
+            //  maxgrid = grid->nlocal;
+            //    memory->destroy(cellcount);
+            //memory->destroy(first);
+            //memory->create(first,maxgrid,"particle:first");
+            //memory->create(cellcount,maxgrid,"particle:cellcount");
+            // }
+        }
         //public virtual void compress_migrate(int, int*);
         //public void compress_rebalance();
         //public void compress_reactions(int, int*);
@@ -335,7 +371,75 @@ namespace cstest
         //public int find_custom(char*);
         //public int add_custom(char*, int, int);
         //public void grow_custom(int, int, int);
-        //public void remove_custom(int);
+        public void remove_custom(int index)
+        {
+            //delete[] ename[index];
+            ename[index] = null;
+
+            if (etype[index] == (int)Enum3.INT)
+            {
+                if (esize[index] == 0)
+                {
+                    //memory->destroy(eivec[ewhich[index]]);
+                    eivec[ewhich[index]] = null;
+                    ncustom_ivec--;
+                    for (int i = ewhich[index]; i < ncustom_ivec; i++)
+                    {
+                        icustom_ivec[i] = icustom_ivec[i + 1];
+                        ewhich[icustom_ivec[i]] = i;
+                        eivec[i] = eivec[i + 1];
+                    }
+                }
+                else
+                {
+                    //memory->destroy(eiarray[ewhich[index]]);
+                    eiarray[ewhich[index]] = null;
+                    ncustom_iarray--;
+                    for (int i = ewhich[index]; i < ncustom_iarray; i++)
+                    {
+                        icustom_iarray[i] = icustom_iarray[i + 1];
+                        ewhich[icustom_iarray[i]] = i;
+                        eiarray[i] = eiarray[i + 1];
+                        eicol[i] = eicol[i + 1];
+                    }
+                }
+            }
+            else if (etype[index] == (int)Enum3.DOUBLE)
+            {
+                if (esize[index] == 0)
+                {
+                    //memory->destroy(edvec[ewhich[index]]);
+                    edvec[ewhich[index]] = null;
+                    ncustom_dvec--;
+                    for (int i = ewhich[index]; i < ncustom_dvec; i++)
+                    {
+                        icustom_dvec[i] = icustom_dvec[i + 1];
+                        ewhich[icustom_dvec[i]] = i;
+                        edvec[i] = edvec[i + 1];
+                    }
+                }
+                else
+                {
+                    //memory->destroy(edarray[ewhich[index]]);
+                    edarray[ewhich[index]] = null;
+                    ncustom_darray--;
+                    for (int i = ewhich[index]; i < ncustom_darray; i++)
+                    {
+                        icustom_darray[i] = icustom_darray[i + 1];
+                        ewhich[icustom_darray[i]] = i;
+                        edarray[i] = edarray[i + 1];
+                        edcol[i] = edcol[i + 1];
+                    }
+                }
+            }
+
+            // set ncustom = 0 if custom list is now entirely empty
+
+            int empty = 1;
+            for (int i = 0; i < ncustom; i++)
+                if (ename[i]!=null) empty = 0;
+            if (empty != 0) ncustom = 0;
+        }
         //public void copy_custom(int, int);
         //public int sizeof_custom();
         //public void write_restart_custom(FILE* fp);
@@ -349,7 +453,7 @@ namespace cstest
                 for (i = 0; i < ncustom_ivec; i++)
                 {
                     //memcpy(ptr, &eivec[i][n], sizeof(int));
-                    buf.Append(eivec[i, n]);
+                    buf.Append(eivec[i][n]);
                     ptr += sizeof(int);
                 }
             }
@@ -369,7 +473,7 @@ namespace cstest
                 for (i = 0; i < ncustom_dvec; i++)
                 {
                     //memcpy(ptr, &edvec[i][n], sizeof(double));
-                    buf.Append(edvec[i, n]);
+                    buf.Append(edvec[i][n]);
                     ptr += sizeof(double);
                 }
             }
