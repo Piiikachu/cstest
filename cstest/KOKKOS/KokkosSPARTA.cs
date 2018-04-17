@@ -1,6 +1,6 @@
 ﻿namespace cstest
 {
-    class KokkosSPARTA
+    public class KokkosSPARTA
     {
     }
 }

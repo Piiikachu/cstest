@@ -53,6 +53,7 @@
     <Compile Include="Dump.cs" />
     <Compile Include="Error.cs" />
     <Compile Include="Fix.cs" />
+    <Compile Include="FixAmbipolar.cs" />
     <Compile Include="FixEmit.cs" />
     <Compile Include="FixEmitFace.cs" />
     <Compile Include="Geometry.cs" />

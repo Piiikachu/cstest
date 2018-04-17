@@ -34,13 +34,16 @@
         //{
 
         //}
-        //virtual void init();
+        public virtual void init()
+        {
+            nsingle = ntotal = 0;
+        }
         //virtual Particle::OnePart* collide(Particle::OnePart*&, double*,
         //                                   double &, int) = 0;
 
-  //virtual void dynamic() { }
-  //      void tally_update();
-  //      double compute_vector(int i);
+        //virtual void dynamic() { }
+        //      void tally_update();
+        //      double compute_vector(int i);
 
         public int copy;
 

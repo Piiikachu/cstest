@@ -43,8 +43,8 @@ namespace cstest
         string[][] packargs;              // arguments for cmdline package commands
         public int num_package;               // number of cmdline package commands
 
-        KokkosSPARTA kokkos;    // KOKKOS accelerator class
-        MemoryKokkos memoryKK;  // KOKKOS version of Memory class
+        public KokkosSPARTA kokkos;    // KOKKOS accelerator class
+        public MemoryKokkos memoryKK;  // KOKKOS version of Memory class
 
         // other top-level SPARTA classes and variables
 
@@ -629,19 +629,21 @@ namespace cstest
         {
             update.init();
             particle.init();
-            //comm.init();
-            //domain.init();
-            //grid.init();
-            //surf.init();
-            //if (react!=null)
-            //{
+            //todo: comm init is empty?
+            comm.init();
+            domain.init();
+            grid.init();
+            surf.init();
+            if (react != null)
+            {
                 //react.init();
-            //}
-            //if (collide!=null)
-            //{
-                //collide.init();
-            //}
-            //modify.init();
+                Console.WriteLine("react init");
+            }
+            if (collide != null)
+            {
+                collide.init();
+            }
+            modify.init();
             //output.init();
             //timer.init();
         }

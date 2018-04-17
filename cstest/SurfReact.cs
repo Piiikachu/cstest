@@ -56,7 +56,10 @@ namespace cstest
             reactions = null;
             indices = null;
         }
-        //public virtual void init();
+        public virtual void init()
+        {
+            nsingle = ntotal = 0;
+        }
         //public virtual int react(Particle::OnePart*&, double*, Particle::OnePart*&) = 0;
 
         //public void tally_update();

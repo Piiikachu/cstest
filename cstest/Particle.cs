@@ -44,18 +44,19 @@ namespace cstest
         public int nmixture;
         public int maxmixture;
 
+        [StructLayout(LayoutKind.Explicit)]
         public struct OnePart
         {
-            public int id;                 // particle ID
-            public int ispecies;           // particle species index
-            public int icell;              // which local Grid::cells the particle is in
-            public double[] x;            // particle position
-            public double[] v;            // particle velocity
-            public double erot;            // rotational energy
-            public double evib;            // vibrational energy
-            public int flag;               // used for migration status
-            public double dtremain;        // portion of move timestep remaining
-            public double weight;          // particle or cell weight, if weighting enabled
+            [FieldOffset(0)]public int id;                 // particle ID
+            [FieldOffset(4)]public int ispecies;           // particle species index
+            [FieldOffset(8)]public int icell;              // which local Grid::cells the particle is in
+            [FieldOffset(32)]public double[] x;            // particle position
+            [FieldOffset(56)]public double[] v;            // particle velocity
+            [FieldOffset(64)]public double erot;            // rotational energy
+            [FieldOffset(72)]public double evib;            // vibrational energy
+            [FieldOffset(76)]public int flag;               // used for migration status
+            [FieldOffset(80)]public double dtremain;        // portion of move timestep remaining
+            [FieldOffset(88)] public double weight;          // particle or cell weight, if weighting enabled
         }
 
         public struct OnePartRestart
@@ -368,7 +369,12 @@ namespace cstest
         //public int pack_restart(char*);
         //public int unpack_restart(char*);
 
-        //public int find_custom(char*);
+        public int find_custom(string name)
+        {
+            for (int i = 0; i < ncustom; i++)
+                if (ename[i]!=null && string.Equals(ename[i], name)) return i;
+            return -1;
+        }
         //public int add_custom(char*, int, int);
         //public void grow_custom(int, int, int);
         public void remove_custom(int index)
@@ -441,7 +447,24 @@ namespace cstest
             if (empty != 0) ncustom = 0;
         }
         //public void copy_custom(int, int);
-        //public int sizeof_custom();
+        public int sizeof_custom()
+        {
+            int n = 0;
+
+            n += ncustom_ivec * sizeof(int);
+            if (ncustom_iarray!=0)
+                for (int i = 0; i < ncustom_iarray; i++)
+                    n += eicol[i] * sizeof(int);
+
+            n = IROUNDUP(n);
+
+            n += ncustom_dvec * sizeof(double);
+            if (ncustom_darray != 0)
+                for (int i = 0; i < ncustom_darray; i++)
+                    n += edcol[i] * sizeof(double);
+
+            return n;
+        }
         //public void write_restart_custom(FILE* fp);
         //public void read_restart_custom(FILE* fp);
         public void pack_custom(int n,ref StringBuilder buf)
@@ -682,6 +705,10 @@ namespace cstest
             string[] words = line.Split('\t');
 
             return words.Length;
+        }
+        public static int IROUNDUP(int A)
+        {
+            return ((((A) + 7) / 8) * 8);
         }
     }
 }

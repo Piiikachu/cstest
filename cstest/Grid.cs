@@ -276,7 +276,14 @@ namespace cstest
         }
 
         //      public void remove();
-        //      public void init();
+        public void init()
+        {
+            ncustom = sparta.particle.ncustom;
+            //nbytes_particle = sizeof(Particle.OnePart);
+            nbytes_particle = 96;
+            nbytes_custom = sparta.particle.sizeof_custom();
+            nbytes_total = nbytes_particle + nbytes_custom;
+        }
         public void add_child_cell(cellint id, int iparent, double[] lo, double[] hi)
         {
             grow_cells(1, 1);

@@ -22,7 +22,31 @@ namespace cstest
         public int ncompute, maxcompute;   // list of computes
         public List<Compute> compute;
 
-        //public void init();
+        public void init()
+        {
+            int i;
+
+            // create lists of fixes with masks for calling at each stage of run
+
+            list_init(START_OF_STEP,ref n_start_of_step,ref list_start_of_step);
+            list_init_end_of_step(END_OF_STEP,ref n_end_of_step, ref list_end_of_step);
+
+            // create other lists of fixes and computes
+
+            list_init_fixes();
+            list_init_computes();
+
+            // init each fix
+
+            for (i = 0; i < nfix; i++) fix[i].init();
+
+            // init each compute
+            // set invoked_scalar,vector,etc to -1 to force new run to re-compute them
+            // add initial timestep to all computes that store invocation times
+            //   since any of them may be invoked by initial thermo
+            // do not clear out invocation times stored within a compute,
+            //   b/c some may be holdovers from previous run, like for ave fixes
+        }
         //public void setup();
         //public virtual void start_of_step();
         //public virtual void end_of_step();
@@ -116,8 +140,42 @@ namespace cstest
         //public void addstep_compute(bigint);
         //public void addstep_compute_all(bigint);
 
-        //public void list_init_fixes();
-        //public void list_init_computes();
+        public void list_init_fixes()
+        {
+            n_pergrid = n_add_particle = n_gas_react = n_surf_react = 0;
+            for (int i = 0; i < nfix; i++)
+            {
+                if (fix[i].gridmigrate!=0) n_pergrid++;
+                if (fix[i].flag_add_particle != 0) n_add_particle++;
+                if (fix[i].flag_gas_react != 0) n_gas_react++;
+                if (fix[i].flag_surf_react != 0) n_surf_react++;
+            }
+
+            list_pergrid = new int[n_pergrid];
+            list_add_particle = new int[n_add_particle];
+            list_gas_react = new int[n_gas_react];
+            list_surf_react = new int[n_surf_react];
+
+            n_pergrid = n_add_particle = n_gas_react = n_surf_react = 0;
+            for (int i = 0; i < nfix; i++)
+            {
+                if (fix[i].gridmigrate != 0) list_pergrid[n_pergrid++] = i;
+                if (fix[i].flag_add_particle != 0) list_add_particle[n_add_particle++] = i;
+                if (fix[i].flag_gas_react != 0) list_gas_react[n_gas_react++] = i;
+                if (fix[i].flag_surf_react != 0) list_surf_react[n_surf_react++] = i;
+            }
+        }
+        public void list_init_computes()
+        {
+            n_timeflag = 0;
+            for (int i = 0; i < ncompute; i++)
+                if (compute[i].timeflag) n_timeflag++;
+            list_timeflag = new int[n_timeflag];
+
+            n_timeflag = 0;
+            for (int i = 0; i < ncompute; i++)
+                if (compute[i].timeflag) list_timeflag[n_timeflag++] = i;
+        }
 
         //public virtual void add_particle(int, double, double, double, double*);
         //public virtual void gas_react(int);
@@ -158,9 +216,31 @@ namespace cstest
          
         protected int n_timeflag;            // list of computes that store time invocation
         protected int[] list_timeflag;
-         
-        //protected void list_init(int, int &, int[]&);
-        //protected void list_init_end_of_step(int, int &, int[]&);
+
+        protected void list_init(int mask,ref int n,ref int[] list)
+        {
+            n = 0;
+            for (int i = 0; i < nfix; i++) if (fmask[i]!=0 & mask != 0) n++;
+            list = new int[n];
+
+            n = 0;
+            for (int i = 0; i < nfix; i++) if (fmask[i] != 0 & mask != 0) list[n++] = i;
+        }
+        protected void list_init_end_of_step(int mask,ref int n,ref int[] list)
+        {
+            n = 0;
+            for (int i = 0; i < nfix; i++) if (fmask[i] != 0 & mask != 0) n++;
+            list = new int[n];
+            end_of_step_every = new int[n];
+
+            n = 0;
+            for (int i = 0; i < nfix; i++)
+                if (fmask[i] != 0 & mask != 0)
+                {
+                    list[n] = i;
+                    end_of_step_every[n++] = fix[i].nevery;
+                }
+        }
 
     }
 }

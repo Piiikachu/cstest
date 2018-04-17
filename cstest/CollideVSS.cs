@@ -15,7 +15,47 @@ namespace cstest
         public const int MAXLINE = 1024;
         //public virtual void init();
 
-        //public double vremax_init(int, int);
+        public override double vremax_init(int igroup, int jgroup)
+        {
+            // parent has set mixture ptr
+
+            List<Particle.Species> species = sparta.particle.species;
+            double[] vscale = mixture.vscale;
+            int[] mix2group = mixture.mix2group;
+            int nspecies =  sparta.particle.nspecies;
+
+            double vrmgroup = 0.0;
+
+            for (int isp = 0; isp < nspecies; isp++)
+            {
+                if (mix2group[isp] != igroup) continue;
+                for (int jsp = 0; jsp < nspecies; jsp++)
+                {
+                    if (mix2group[jsp] != jgroup) continue;
+
+                    double diam = 0.5 * (mparams[isp].diam + mparams[jsp].diam);
+                    double omega = 0.5 * (mparams[isp].omega + mparams[jsp].omega);
+                    double tref = 0.5 * (mparams[isp].tref + mparams[jsp].tref);
+                    double mr = species[isp].mass * species[jsp].mass /
+                  (species[isp].mass + species[jsp].mass);
+                    double cxs = diam * diam *MyConst.MY_PI;
+                    prefactor[isp,jsp] = cxs * Math.Pow(2.0 * sparta.update.boltz * tref / mr, omega - 0.5) / Gamma(2.5 - omega);
+                    double beta = Math.Max(vscale[isp], vscale[jsp]);
+                    double vrm = 2.0 * cxs * beta;
+                    vrmgroup = Math.Max(vrmgroup, vrm);
+                }
+            }
+
+            return vrmgroup;
+        }
+
+        private double Gamma(double v)
+        {
+            Console.WriteLine("how to tgamma in c#");
+            //throw new NotImplementedException();
+            return 1;
+        }
+
         //public virtual double attempt_collision(int, int, double);
         //public double attempt_collision(int, int, int, double);
         //public virtual int test_collision(int, int, int, Particle::OnePart*, Particle::OnePart*);

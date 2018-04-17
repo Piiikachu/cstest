@@ -200,7 +200,36 @@ namespace cstest
                 }
             }
         }
-        //public void init();
+        public void init()
+        {
+            // check that every element is assigned to a surf collision model
+            // skip if caller turned off the check, e.g. BalanceGrid
+
+            if (surf_collision_check!=0)
+            {
+                int flag = 0;
+                if (sparta.domain.dimension == 2)
+                {
+                    for (int i = 0; i < nline; i++)
+                        if (lines[i].isc < 0) flag++;
+                }
+                if (sparta.domain.dimension == 3)
+                {
+                    for (int i = 0; i < ntri; i++)
+                        if (tris[i].isc < 0) flag++;
+                }
+                if (flag != 0)
+                {
+                    string str=string.Format( "{0} surface elements not assigned to a collision model", flag);
+                    sparta.error.all(str);
+                }
+            }
+
+            // initialize surf collision and reaction models
+
+            for (int i = 0; i < nsc; i++) sc[i].init();
+            for (int i = 0; i < nsr; i++) sr[i].init();
+        }
         //public int nelement();
         //public void setup_surf();
 

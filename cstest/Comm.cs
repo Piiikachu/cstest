@@ -18,7 +18,10 @@ namespace cstest
                                                  //   particles is performed
 
 
-        //public void init() { }
+        public void init()
+        {
+
+        }
         public void reset_neighbors()
         {
             neighflag = 0;

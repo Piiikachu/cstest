@@ -1,6 +1,7 @@
 ﻿namespace cstest
 {
-    class MemoryKokkos
+    public class MemoryKokkos
     {
+
     }
 }

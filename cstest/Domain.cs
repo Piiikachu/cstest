@@ -66,7 +66,36 @@ namespace cstest
             copy = copymode = 0;
 
         }
-        //public void init();
+        public void init()
+        {
+            if (axisymmetric!=0 && dimension != 2)
+                sparta.error.all("Axi-symmetry only allowed for 2d simulation");
+            if (dimension == 2 && (bflag[(int)Enum1.ZLO] != (int)Enum2.PERIODIC || bflag[(int)Enum1.ZHI] != (int)Enum2.PERIODIC))
+                sparta.error.all("Z dimension must be periodic for 2d simulation");
+
+            // check that every SURFACE boundary is assigned to a surf collision model
+            // skip if caller turned off the check, e.g. BalanceGrid
+
+            if (boundary_collision_check != 0)
+            {
+                for (int i = 0; i < 6; i++)
+                    if (bflag[i] == (int)Enum2.SURFACE && surf_collide[i] < 0)
+                        sparta.error.all("Box boundary not assigned a surf_collide ID");
+            }
+
+            int cutflag = 0;
+            if (bflag[0] == (int)Enum2.PERIODIC && sparta.grid.cutoff > xprd) cutflag = 1;
+            if (bflag[2] == (int)Enum2.PERIODIC && sparta.grid.cutoff > yprd) cutflag = 1;
+            if (dimension == 3 && bflag[4] == (int)Enum2.PERIODIC && sparta.grid.cutoff > zprd)
+                cutflag = 1;
+            if (cutflag != 0) sparta.error.all("Grid cutoff is longer than box length in a periodic dimension");
+
+            // surfreactany = 1 if any face has surface reactions assigned to it
+
+            surfreactany = 0;
+            for (int i = 0; i < 6; i++)
+                if (surf_react[i] >= 0) surfreactany = 1;
+        }
         public void set_initial_box()
         {
             if (boxlo[0] >= boxhi[0] || boxlo[1] >= boxhi[1] || boxlo[2] >= boxhi[2])

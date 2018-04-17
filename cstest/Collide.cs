@@ -72,12 +72,178 @@ namespace cstest
             maxelectron = 0;
             elist = null;
         }
-        //public virtual void init();
+        public virtual void init()
+        {
+            // error check
+
+            if (ambiflag!=0 && nearcp != 0)
+                sparta.error.all("Ambipolar collision model does not yet support near-neighbor collisions");
+
+            // require mixture to contain all species
+
+            int imix = sparta.particle.find_mixture(mixID);
+            if (imix < 0) sparta.error.all("Collision mixture does not exist");
+            mixture = sparta.particle.mixture[imix];
+
+            if (mixture.nspecies != sparta.particle.nspecies)
+                sparta.error.all("Collision mixture does not contain all species");
+
+            if (sparta.kokkos != null && kokkosable == 0)
+                sparta.error.all("Must use Kokkos-supported collision style if Kokkos is enabled");
+
+            // reallocate one-cell data structs for one or many groups
+
+            oldgroups = ngroups;
+            ngroups = mixture.ngroup;
+
+            if (ngroups != oldgroups)
+            {
+                if (oldgroups == 1)
+                {
+                    //memory->destroy(plist);
+                    npmax = 0;
+                    plist = null;
+                }
+                if (oldgroups > 1)
+                {
+                    //delete[] ngroup;
+                    //delete[] maxgroup;
+                    //for (int i = 0; i < oldgroups; i++) memory->destroy(glist[i]);
+                    //delete[] glist;
+                    //memory->destroy(gpair);
+                    ngroup = null;
+                    maxgroup = null;
+                    glist = null;
+                    gpair = null;
+                }
+
+                if (ngroups == 1)
+                {
+                    npmax = DELTAPART;
+                    plist = new int[npmax];
+                    //memory->create(plist, npmax, "collide:plist");
+                }
+                if (ngroups > 1)
+                {
+                    ngroup = new int[ngroups];
+                    maxgroup = new int[ngroups];
+                    glist = new int[ngroups][];
+                    for (int i = 0; i < ngroups; i++)
+                    {
+                        maxgroup[i] = DELTAPART;
+                        glist[i] = new int[DELTAPART];
+                        //memory->create(glist[i], DELTAPART, "collide:glist");
+                    }
+                    gpair = new int[ngroups * ngroups, 3];
+                    //memory->create(gpair, ngroups * ngroups, 3, "collide:gpair");
+                }
+            }
+
+            // allocate vremax,remain if group count changed
+            // will always be allocated on first run since oldgroups = 0
+            // set vremax_intitial via values calculated by collide style
+
+            if (ngroups != oldgroups)
+            {
+                //memory->destroy(vremax);
+                //memory->destroy(vremax_initial);
+                //memory->destroy(remain);
+                nglocal = sparta.grid.nlocal;
+                nglocalmax = nglocal;
+                vremax = new double[nglocalmax, ngroups, ngroups];
+                vremax_initial = new double[ngroups, ngroups];
+                //memory->create(vremax, nglocalmax, ngroups, ngroups, "collide:vremax");
+                //memory->create(vremax_initial, ngroups, ngroups, "collide:vremax_initial");
+                if (remainflag != 0)
+                    remain = new double[nglocalmax, ngroups, ngroups];
+                    //memory->create(remain, nglocalmax, ngroups, ngroups, "collide:remain");
+
+                for (int igroup = 0; igroup < ngroups; igroup++)
+                    for (int jgroup = 0; jgroup < ngroups; jgroup++)
+                        vremax_initial[igroup,jgroup] = vremax_init(igroup, jgroup);
+            }
+            // if recombination reactions exist, set flags per species pair
+
+            recombflag = 0;
+            if (sparta.react!=null)
+            {
+                System.Console.WriteLine("Collide init react");
+                //recombflag = sparta.react.recombflag;
+                //recomb_boost_inverse = sparta.react.recomb_boost_inverse;
+            }
+
+            if (recombflag != 0)
+            {
+                int nspecies = sparta.particle.nspecies;
+                //memory->destroy(recomb_ijflag);
+                recomb_ijflag = new int[nspecies, nspecies];
+                //memory->create(recomb_ijflag, nspecies, nspecies, "collide:recomb_ijflag");
+                for (int i = 0; i < nspecies; i++)
+                    for (int j = 0; j < nspecies; j++)
+                        //recomb_ijflag[i,j] = sparta.react.recomb_exist(i, j);
+                        System.Console.WriteLine("collide init react");
+            }
+
+            // find ambipolar fix
+            // set ambipolar vector/array indices
+            // if reactions defined, check that they are valid ambipolar reactions
+
+            if (ambiflag!=0)
+            {
+                index_ionambi = sparta.particle.find_custom("ionambi");
+                index_velambi = sparta.particle.find_custom("velambi");
+                if (index_ionambi < 0 || index_velambi < 0)
+                    sparta.error.all("Collision ambipolar without fix ambipolar");
+                if (sparta.react != null)
+                {
+                    System.Console.WriteLine("collide init react");
+                    //sparta.react.ambi_check();
+                }
+
+                int ifix;
+                for (ifix = 0; ifix < sparta.modify.nfix; ifix++)
+                    if (string.Equals(sparta.modify.fix[ifix].style, "ambipolar")) break;
+                FixAmbipolar afix = (FixAmbipolar)sparta.modify.fix[ifix];
+                ambispecies = afix.especies;
+                ions = afix.ions;
+            }
+
+            // vre_next = next timestep to zero vremax & remain, based on vre_every
+
+            if (vre_every!=0) vre_next = (sparta.update.ntimestep / vre_every) * vre_every + vre_every;
+            else vre_next = sparta.update.laststep + 1;
+
+            // if requested reset vremax & remain
+            // must be after per-species vremax_initial is setup
+
+            if (vre_first != 0 || vre_start != 0)
+            {
+                reset_vremax();
+                vre_first = 0;
+            }
+
+            // initialize running stats before each run
+
+            ncollide_running = nattempt_running = nreact_running = 0;
+            
+        }
         //public void modify_params(int, char**);
-        //public void reset_vremax();
+        public void reset_vremax()
+        {
+            for (int icell = 0; icell < nglocal; icell++)
+                for (int igroup = 0; igroup < ngroups; igroup++)
+                    for (int jgroup = 0; jgroup < ngroups; jgroup++)
+                    {
+                        vremax[icell,igroup,jgroup] = vremax_initial[igroup,jgroup];
+                        if (remainflag!=0) remain[icell,igroup,jgroup] = 0.0;
+                    }
+        }
         //public virtual void collisions();
 
-        //public virtual double vremax_init(int, int) = 0;
+        public virtual double vremax_init(int igroup, int jgroup)
+        {
+            return 0;
+        }
         //public virtual double attempt_collision(int, int, double) = 0;
         //public virtual double attempt_collision(int, int, int, double) = 0;
         //public virtual int test_collision(int, int, int,
@@ -166,7 +332,7 @@ namespace cstest
         protected int ngroups;        // # of groups
         protected int[] ngroup;        // # of particles in one cell of each group
         protected int[] maxgroup;      // max # of glist indices allocated per group
-        protected int[,] glist;        // indices of particles in one cell of each group
+        protected int[][] glist;        // indices of particles in one cell of each group
          
         protected int npair;          // # of group pairs to do collisions for
         protected int[,] gpair;        // Nx3 list of species pairs to do collisions for
@@ -181,42 +347,42 @@ namespace cstest
         protected int ndelete, maxdelete;      // # of particles removed by chemsitry
         protected int[] dellist;               // list of particle indices to delete
 
-        string mixID;               // ID of mixture to use for groups
-        Mixture  mixture;    // ptr to mixture
-        RanPark  random;     // RNG for collision generation
+        protected string mixID;               // ID of mixture to use for groups
+        protected Mixture  mixture;    // ptr to mixture
+        protected RanPark  random;     // RNG for collision generation
 
-        int vre_first;      // 1 for first run after collision style is defined
-        int vre_start;      // 1 if reset vre params at start of each run
-        int vre_every;      // reset vre params every this many steps
-        bigint vre_next;    // next timestep to reset vre params on
-        int remainflag;     // 1 if remain defined, else use random fraction
-
-        double[,,] vremax;   // max relative velocity, per cell, per group pair
-        double[,,] remain;   // collision number remainder, per cell, per group pair
-        double[,] vremax_initial;   // initial vremax value, per group pair
+        protected int vre_first;      // 1 for first run after collision style is defined
+        protected int vre_start;      // 1 if reset vre params at start of each run
+        protected int vre_every;      // reset vre params every this many steps
+        protected bigint vre_next;    // next timestep to reset vre params on
+        protected int remainflag;     // 1 if remain defined, else use random fraction
+         
+        protected double[,,] vremax;   // max relative velocity, per cell, per group pair
+        protected double[,,] remain;   // collision number remainder, per cell, per group pair
+        protected double[,] vremax_initial;   // initial vremax value, per group pair
 
         // recombination reactions
 
-        int recombflag;               // 1 if recomb reactions enabled, 0 if not
-        double recomb_boost_inverse;  // recombination rate boost factor from React
-        int[,] recomb_ijflag;          // 1 if species I,J have recomb reaction(s)
+        protected int recombflag;               // 1 if recomb reactions enabled, 0 if not
+        protected double recomb_boost_inverse;  // recombination rate boost factor from React
+        protected int[,] recomb_ijflag;          // 1 if species I,J have recomb reaction(s)
 
-        int oldgroups;         // pass from parent to child class
-        int copymode;          // 1 if copy of class (prevents deallocation of
-                               //  base class when child copy is destroyed)
-        int kokkosable;        // 1 if collide method supports Kokkos
+        protected int oldgroups;         // pass from parent to child class
+        protected int copymode;          // 1 if copy of class (prevents deallocation of
+                                //  base class when child copy is destroyed)
+        protected int kokkosable;        // 1 if collide method supports Kokkos
 
         // ambipolar approximation data structs
 
-        int ambiflag;       // 1 if ambipolar option is enabled
-        int ambispecies;    // species for ambipolar electrons
-        int index_ionambi;  // 2 custom ambipolar vectors
-        int index_velambi;
-        int[] ions;          // ptr to fix ambipolar list of ions
+        protected int ambiflag;       // 1 if ambipolar option is enabled
+        protected int ambispecies;    // species for ambipolar electrons
+        protected int index_ionambi;  // 2 custom ambipolar vectors
+        protected int index_velambi;
+        protected int[] ions;          // ptr to fix ambipolar list of ions
 
-        int nelectron;                // # of ambipolar electrons in elist
-        int maxelectron;              // max # elist can hold
-        List<Particle.OnePart> elist;     // list of ambipolar electrons
+        protected int nelectron;                // # of ambipolar electrons in elist
+        protected int maxelectron;              // max # elist can hold
+        protected List<Particle.OnePart> elist;     // list of ambipolar electrons
                                       // for one grid cell or pair of groups in cell
 
         //inline void addgroup(int igroup, int n)
