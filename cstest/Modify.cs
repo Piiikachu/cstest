@@ -60,7 +60,15 @@ namespace cstest
             return n;
         }
         //public virtual int unpack_grid_one(int, char*);
-        //public virtual void compress_grid(int);
+        public virtual void compress_grid(int flag)
+        {
+            if (flag == 0)
+                for (int i = 0; i < n_pergrid; i++)
+                    fix[list_pergrid[i]].compress_grid();
+            else
+                for (int i = 0; i < n_pergrid; i++)
+                    fix[list_pergrid[i]].post_compress_grid();
+        }
 
         public void add_fix(int narg, string[] arg)
         {
@@ -169,12 +177,12 @@ namespace cstest
         {
             n_timeflag = 0;
             for (int i = 0; i < ncompute; i++)
-                if (compute[i].timeflag) n_timeflag++;
+                if (compute[i].timeflag!=0) n_timeflag++;
             list_timeflag = new int[n_timeflag];
 
             n_timeflag = 0;
             for (int i = 0; i < ncompute; i++)
-                if (compute[i].timeflag) list_timeflag[n_timeflag++] = i;
+                if (compute[i].timeflag != 0) list_timeflag[n_timeflag++] = i;
         }
 
         //public virtual void add_particle(int, double, double, double, double*);

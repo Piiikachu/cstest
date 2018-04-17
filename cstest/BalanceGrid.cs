@@ -310,14 +310,17 @@ namespace cstest
 
             sparta.grid.unset_neighbors();
             sparta.grid.remove_ghosts();
-            sparta.comm.migrate_cells(nmigrate);
+            Console.WriteLine("balancegrid ->sparta.comm.migrate_cells(nmigrate);"); 
 
-            sparta.mpi.MPI_Barrier(world);
+            sparta.mpi.MPI_Barrier(sparta.world);
             double time4 = sparta.mpi.MPI_Wtime();
 
             sparta.grid.setup_owned();
             sparta.grid.acquire_ghosts();
-            if (ghost_previous!=0) sparta.grid.reset_neighbors();
+            if (ghost_previous!=0)
+            {
+                Console.WriteLine("sparta.grid.reset_neighbors();"); 
+            }
             else sparta.grid.find_neighbors();
             sparta.comm.reset_neighbors();
 

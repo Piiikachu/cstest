@@ -21,24 +21,24 @@ namespace cstest
             //if (ownflag!=0) nlocal++;
             //else nghost++;
 
-            Console.WriteLine("gridcomm.unpack_one"+buf);
+            Console.WriteLine("gridcomm.unpack_one" + buf);
             return 16;
         }
         //      public int pack_one_adapt(char*, char*, int);
-        public int pack_particles(int icell,ref StringBuilder buf, int memflag)
+        public int pack_particles(int icell, ref StringBuilder buf, int memflag)
         {
             int n = 0;
             int np = cinfo[icell].count;
-            if (memflag!=0)
+            if (memflag != 0)
             {
                 //*((int*)ptr) = np;
             }
 
             n += sizeof(int);
 
-            if (np==0) return n;
+            if (np == 0) return n;
 
-            if (memflag!=0)
+            if (memflag != 0)
             {
                 Particle.OnePart[] particles = sparta.particle.particles;
                 int[] next = sparta.particle.next;
@@ -49,9 +49,9 @@ namespace cstest
                     //memcpy(ptr, &particles[ip], nbytes_particle);
                     buf.Append(particles[ip]);
                     n += nbytes_particle;
-                    if (ncustom!=0)
+                    if (ncustom != 0)
                     {
-                        sparta.particle.pack_custom(ip,ref buf);
+                        sparta.particle.pack_custom(ip, ref buf);
                         n += nbytes_custom;
                     }
                     particles[ip].icell = -1;
@@ -69,7 +69,7 @@ namespace cstest
             // must compress per-cell arrays in collide and fixes before
             // cells data structure changes
 
-            if (sparta.collide!=null) sparta.collide.compress_grid();
+            if (sparta.collide != null) sparta.collide.compress_grid();
             if (sparta.modify.n_pergrid != 0) sparta.modify.compress_grid(0);
 
             // copy of integer lists
@@ -115,8 +115,10 @@ namespace cstest
 
                     if (icell != nlocal)
                     {
-                        memcpy(&cells[nlocal], &cells[icell], sizeof(ChildCell));
-                        memcpy(&cinfo[nlocal], &cinfo[icell], sizeof(ChildInfo));
+                        cells[nlocal] = cells[icell];
+                        cinfo[nlocal] = cinfo[icell];
+                        //memcpy(&cells[nlocal], &cells[icell], sizeof(ChildCell));
+                        //memcpy(&cinfo[nlocal], &cinfo[icell], sizeof(ChildInfo));
                     }
 
                     cells[nlocal].ilocal = nlocal;
@@ -130,8 +132,9 @@ namespace cstest
                         {
                             int[] oldcsurfs = cells[icell].csurfs;
                             cells[nlocal].csurfs = csurfs.vget();
-                            memcpy(cells[nlocal].csurfs, oldcsurfs,
-                                   cells[nlocal].nsurf * sizeof(int));
+                            Array.Copy(oldcsurfs, cells[nlocal].csurfs, cells[nlocal].nsurf);
+                            //memcpy(cells[nlocal].csurfs, oldcsurfs,
+                            //       cells[nlocal].nsurf * sizeof(int));
                             csurfs.vgot(cells[nlocal].nsurf);
                         }
                         else
@@ -155,11 +158,11 @@ namespace cstest
                 {
                     if (cells[icell].proc != me)
                     {
-                        int isplit = cells[icell].isplit;
-                        int nsplit = cells[icell].nsplit;
-                        for (int i = 0; i < nsplit; i++)
+                        int isplits = cells[icell].isplit;
+                        int nsplits = cells[icell].nsplit;
+                        for (int i = 0; i < nsplits; i++)
                         {
-                            int m = sinfo[isplit].csubs[i];
+                            int m = sinfo[isplits].csubs[i];
                             cells[m].proc = cells[icell].proc;
                         }
                         continue;
@@ -167,8 +170,10 @@ namespace cstest
 
                     if (icell != nlocal)
                     {
-                        memcpy(&cells[nlocal], &cells[icell], sizeof(ChildCell));
-                        memcpy(&cinfo[nlocal], &cinfo[icell], sizeof(ChildInfo));
+                        cells[nlocal] = cells[icell];
+                        cinfo[nlocal] = cinfo[icell];
+                        // memcpy(&cells[nlocal], &cells[icell], sizeof(ChildCell));
+                        // memcpy(&cinfo[nlocal], &cinfo[icell], sizeof(ChildInfo));
                     }
 
                     cells[nlocal].ilocal = nlocal;
@@ -177,15 +182,20 @@ namespace cstest
 
                     int[] oldcsurfs = cells[icell].csurfs;
                     cells[nlocal].csurfs = csurfs.vget();
-                    memcpy(cells[nlocal].csurfs, oldcsurfs,
-                           cells[nlocal].nsurf * sizeof(int));
+                    Array.Copy(oldcsurfs, cells[nlocal].csurfs, cells[nlocal].nsurf);
+                    //memcpy(cells[nlocal].csurfs, oldcsurfs,
+                    //cells[nlocal].nsurf * sizeof(int));
                     csurfs.vgot(cells[nlocal].nsurf);
 
                     // compress sinfo
 
                     int isplit = cells[nlocal].isplit;
                     if (isplit != nsplitlocal)
-                        memcpy(&sinfo[nsplitlocal], &sinfo[isplit], sizeof(SplitInfo));
+                    {
+                        sinfo[nsplitlocal] = sinfo[isplit];
+                        //memcpy(&sinfo[nsplitlocal], &sinfo[isplit], sizeof(SplitInfo));
+                    }
+
                     cells[nlocal].isplit = nsplitlocal;
                     sinfo[nsplitlocal].icell = nlocal;
 
@@ -193,8 +203,9 @@ namespace cstest
 
                     int[] oldcsplits = sinfo[isplit].csplits;
                     sinfo[nsplitlocal].csplits = csplits.vget();
-                    memcpy(sinfo[nsplitlocal].csplits, oldcsplits,
-                           cells[nlocal].nsurf * sizeof(int));
+                    Array.Copy(oldcsplits, sinfo[nsplitlocal].csplits, cells[nlocal].nsurf);
+                    //memcpy(sinfo[nsplitlocal].csplits, oldcsplits,
+                    //               cells[nlocal].nsurf * sizeof(int));
                     csplits.vgot(cells[nlocal].nsurf);
 
                     // new csubs list of length nsplit
@@ -214,7 +225,6 @@ namespace cstest
                     nlocal++;
                 }
             }
-
             hashfilled = 0;
 
             // delete old integer lists
@@ -255,7 +265,7 @@ namespace cstest
                 n += unpack_one(buf, 0, 0);
             }
         }
-
+              
         public int pack_one(int icell,int ownflag, int molflag, int memflag,ref StringBuilder buf)
         {
             int n = 0;

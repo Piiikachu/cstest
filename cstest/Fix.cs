@@ -94,7 +94,10 @@ namespace cstest
             return 0;
         }
 
-        //public virtual void init() { }
+        public virtual void init()
+        {
+
+        }
         //public virtual void setup() { }
 
         //public virtual void start_of_step() { }
@@ -106,8 +109,8 @@ namespace cstest
         //public virtual void add_grid_one(int, int) { }
         public virtual int pack_grid_one(int icell,ref StringBuilder buf, int memflag) { return 0; }
         //public virtual int unpack_grid_one(int, char*) { return 0; }
-        //public virtual void compress_grid() { }
-        //public virtual void post_compress_grid() { }
+        public virtual void compress_grid() { }
+        public virtual void post_compress_grid() { }
 
         //public virtual double compute_scalar() { return 0.0; }
         //public virtual double compute_vector(int) { return 0.0; }

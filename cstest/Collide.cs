@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 using bigint = System.Int64;
 namespace cstest
@@ -150,13 +151,24 @@ namespace cstest
                 //memory->destroy(remain);
                 nglocal = sparta.grid.nlocal;
                 nglocalmax = nglocal;
-                vremax = new double[nglocalmax, ngroups, ngroups];
+                vremax = new double[nglocalmax][,];
+                for (int i = 0; i < nglocalmax; i++)
+                {
+                    vremax[i] = new double[ngroups, ngroups];
+                }
+                
                 vremax_initial = new double[ngroups, ngroups];
                 //memory->create(vremax, nglocalmax, ngroups, ngroups, "collide:vremax");
                 //memory->create(vremax_initial, ngroups, ngroups, "collide:vremax_initial");
                 if (remainflag != 0)
-                    remain = new double[nglocalmax, ngroups, ngroups];
-                    //memory->create(remain, nglocalmax, ngroups, ngroups, "collide:remain");
+                {
+                    remain = new double[nglocalmax][,]; 
+                    for (int i = 0; i < nglocalmax; i++)
+                    {
+                        remain[i] = new double[ngroups, ngroups];
+                    }
+                }
+                //memory->create(remain, nglocalmax, ngroups, ngroups, "collide:remain");
 
                 for (int igroup = 0; igroup < ngroups; igroup++)
                     for (int jgroup = 0; jgroup < ngroups; jgroup++)
@@ -234,8 +246,8 @@ namespace cstest
                 for (int igroup = 0; igroup < ngroups; igroup++)
                     for (int jgroup = 0; jgroup < ngroups; jgroup++)
                     {
-                        vremax[icell,igroup,jgroup] = vremax_initial[igroup,jgroup];
-                        if (remainflag!=0) remain[icell,igroup,jgroup] = 0.0;
+                        vremax[icell][igroup,jgroup] = vremax_initial[igroup,jgroup];
+                        if (remainflag!=0) remain[icell][igroup,jgroup] = 0.0;
                     }
         }
         //public virtual void collisions();
@@ -267,9 +279,9 @@ namespace cstest
                 if (memflag!=0)
                 {
                     //memcpy(buf, &vremax[icell][0][0], nbytes);
-                    buf.Append(vremax[icell,0,0]);
+                    buf.Append(vremax[icell][0,0]);
                     //memcpy(&buf[nbytes], &remain[icell][0][0], nbytes);
-                    buf.Append(remain[icell, 0, 0]);
+                    buf.Append(remain[icell][0,0]);
                 }
                 n = 2 * nbytes;
             }
@@ -278,7 +290,7 @@ namespace cstest
                 if (memflag!=0)
                 {
                     //memcpy(buf, &vremax[icell][0][0], nbytes);
-                    buf.Append(vremax[icell, 0, 0]);
+                    buf.Append(vremax[icell][0,0]);
                 }
 
                 n = nbytes;
@@ -296,10 +308,10 @@ namespace cstest
                         if (memflag!=0)
                         {
                             //memcpy(&buf[n], &vremax[m][0][0], nbytes);
-                            buf.Append(vremax[m, 0, 0]);
+                            buf.Append(vremax[m][0,0]);
                             n += nbytes;
                             //memcpy(&buf[n], &remain[m][0][0], nbytes);
-                            buf.Append(remain[m, 0, 0]);
+                            buf.Append(remain[m][0,0]);
                             n += nbytes;
                         }
                         else n += 2 * nbytes;
@@ -309,7 +321,7 @@ namespace cstest
                         if (memflag!=0)
                         {
                             //memcpy(&buf[n], &vremax[m][0][0], nbytes);
-                            buf.Append(vremax[m, 0, 0]);
+                            buf.Append(vremax[m][ 0, 0]);
                         }
 
                         n += nbytes;
@@ -347,9 +359,13 @@ namespace cstest
 
                 if (nglocal != icell)
                 {
-                    memcpy(&vremax[nglocal][0][0], &vremax[icell][0][0], nbytes);
+                    vremax[nglocal] = vremax[icell];
+                    //memcpy(&vremax[nglocal][0][0], &vremax[icell][0][0], nbytes);
                     if (remainflag!=0 )
-                        memcpy(&remain[nglocal][0][0], &remain[icell][0][0], nbytes);
+                    {
+                        remain[nglocal] = remain[icell];
+                       //memcpy(&remain[nglocal][0][0], &remain[icell][0][0], nbytes);
+                    }
                 }
                 nglocal++;
             }
@@ -390,8 +406,8 @@ namespace cstest
         protected bigint vre_next;    // next timestep to reset vre params on
         protected int remainflag;     // 1 if remain defined, else use random fraction
          
-        protected double[,,] vremax;   // max relative velocity, per cell, per group pair
-        protected double[,,] remain;   // collision number remainder, per cell, per group pair
+        protected double[][,] vremax;   // max relative velocity, per cell, per group pair
+        protected double[][,] remain;   // collision number remainder, per cell, per group pair
         protected double[,] vremax_initial;   // initial vremax value, per group pair
 
         // recombination reactions

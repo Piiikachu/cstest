@@ -112,18 +112,25 @@ namespace cstest
         // will return same ptr as previous call if vgot() not called
         // return null if run out of memory
 
-        public T vget()
+        public T[] vget()
         {
-            if (index + maxchunk <= pagesize) return page[index];
+            
+            if (index + maxchunk <= pagesize)
+            {
+                T[] ans = new T[page.Length - index];
+                Array.Copy(page, index, ans, 0, ans.Length);
+                return ans;
+            }
+
             ipage++;
             if (ipage == npage)
             {
                 allocate();
-                if (errorflag!=0) return default(T);
+                if (errorflag!=0) return null;
             }
             page = pages[ipage];
             index = 0;
-            return page[index];
+            return page;
         }
 
         // increment by N = # of values stored in loc returned by vget()

@@ -148,7 +148,43 @@ namespace cstest
             // }
         }
         //public virtual void compress_migrate(int, int*);
-        //public void compress_rebalance();
+        public void compress_rebalance()
+        {
+            int nbytes = 96;
+
+            if (ncustom==0)
+            {
+                int i = 0;
+                while (i < nlocal)
+                {
+                    if (particles[i].icell < 0)
+                    {
+                        particles[i] = particles[nlocal - 1];
+                        //memcpy(&particles[i], &particles[nlocal - 1], nbytes);
+                        nlocal--;
+                    }
+                    else i++;
+                }
+
+            }
+            else
+            {
+                int i = 0;
+                while (i < nlocal)
+                {
+                    if (particles[i].icell < 0)
+                    {
+                        particles[i] = particles[nlocal - 1];
+                        //memcpy(&particles[i], &particles[nlocal - 1], nbytes);
+                        copy_custom(i, nlocal - 1);
+                        nlocal--;
+                    }
+                    else i++;
+                }
+            }
+
+            sorted = 0;
+        }
         //public void compress_reactions(int, int*);
         public void sort()
         {
@@ -446,7 +482,43 @@ namespace cstest
                 if (ename[i]!=null) empty = 0;
             if (empty != 0) ncustom = 0;
         }
-        //public void copy_custom(int, int);
+        public void copy_custom(int i, int j)
+        {
+            int m;
+
+            // caller does not always check this
+            // shouldn't be a problem, but valgrind can complain if memcpy to self
+            // oddly memcpy(&particles[i],&particles[j],sizeof(OnePart)) seems OK
+
+            if (i == j) return;
+
+            // 4 flavors of vectors/arrays
+
+            if (ncustom_ivec!=0)
+            {
+                for (m = 0; m < ncustom_ivec; m++) eivec[m][i] = eivec[m][j];
+            }
+            if (ncustom_iarray != 0)
+            {
+                for (m = 0; m < ncustom_iarray; m++)
+                {
+                    Array.Copy(eiarray[m][j], eiarray[m][i], eicol[m]);
+                    //memcpy(eiarray[m][i], eiarray[m][j], eicol[m] * sizeof(int));
+                }
+            }
+            if (ncustom_dvec != 0)
+            {
+                for (m = 0; m < ncustom_dvec; m++) edvec[m][i] = edvec[m][j];
+            }
+            if (ncustom_darray != 0)
+            {
+                for (m = 0; m < ncustom_darray; m++)
+                {
+                    Array.Copy(edarray[m][j], edarray[m][i], edcol[m]);
+                    //memcpy(edarray[m][i], edarray[m][j], edcol[m] * sizeof(double));
+                }
+            }
+        }
         public int sizeof_custom()
         {
             int n = 0;

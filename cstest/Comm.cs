@@ -144,21 +144,32 @@ namespace cstest
 
             if (recvsize > maxrecvbuf)
             {
-                memory->destroy(rbuf);
+               // memory->destroy(rbuf);
                 maxrecvbuf = recvsize;
-                memory->create(rbuf, maxrecvbuf, "comm:rbuf");
-                memset(rbuf, 0, maxrecvbuf);
+                rbuf = new char[maxrecvbuf];
+                //memory->create(rbuf, maxrecvbuf, "comm:rbuf");
+                //memset(rbuf, 0, maxrecvbuf);
             }
 
             // perform irregular communication
-
-            igrid->exchange_variable(sbuf, gsize, rbuf);
+            byte[] bytes = new byte[sbuf.Length * sizeof(char)];
+            bytes = Encoding.UTF8.GetBytes(sbuf.ToString());
+            byte[] byter = new byte[rbuf.Length * sizeof(char)];
+            byter = Encoding.UTF8.GetBytes(rbuf.ToString());
+            igrid.exchange_variable(bytes, gsize, byter);
 
             // unpack received grid cells with their particles
 
             offset = 0;
             for (i = 0; i < nrecv; i++)
-                offset += grid->unpack_one(&rbuf[offset], 1, 1);
+            {
+                offset += sparta.grid.unpack_one(new StringBuilder(), 1, 1);
+            }
+            Console.Write("comm.migrate_cells()->unpackone");
+            for (int a = offset; a < rbuf.Length-1-offset; a++)
+            {
+                Console.Write("{0}",rbuf[a]);
+            }
         }
         //public int send_cells_adapt(int, int*, char*, char**);
         //public int irregular_uniform(int, int*, char*, int, char**);
