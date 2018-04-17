@@ -320,7 +320,40 @@ namespace cstest
             return n;
         }
         //public virtual int unpack_grid_one(int, char*);
-        //public virtual void compress_grid();
+        public virtual void compress_grid()
+        {
+
+            int nbytes = ngroups * ngroups * sizeof(double);
+
+            int me = sparta.comm.me;
+            Grid.ChildCell[] cells = sparta.grid.cells;
+
+            // keep an unsplit or split cell if staying on this proc
+            // keep a sub cell if its split cell is staying on this proc
+
+            int ncurrent = nglocal;
+            nglocal = 0;
+            for (int icell = 0; icell < ncurrent; icell++)
+            {
+                if (cells[icell].nsplit >= 1)
+                {
+                    if (cells[icell].proc != me) continue;
+                }
+                else
+                {
+                    int isplit = cells[icell].isplit;
+                    if (cells[sparta.grid.sinfo[isplit].icell].proc != me) continue;
+                }
+
+                if (nglocal != icell)
+                {
+                    memcpy(&vremax[nglocal][0][0], &vremax[icell][0][0], nbytes);
+                    if (remainflag!=0 )
+                        memcpy(&remain[nglocal][0][0], &remain[icell][0][0], nbytes);
+                }
+                nglocal++;
+            }
+        }
         //public virtual void adapt_grid();
 
         protected int npmax;          // max # of particles in plist

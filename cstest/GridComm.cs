@@ -64,7 +64,188 @@ namespace cstest
         }
         //      public int unpack_particles(char*, int);
         //      public void unpack_particles_adapt(int, char*);
-        //      public void compress();
+        public void compress()
+        {
+            // must compress per-cell arrays in collide and fixes before
+            // cells data structure changes
+
+            if (sparta.collide!=null) sparta.collide.compress_grid();
+            if (sparta.modify.n_pergrid != 0) sparta.modify.compress_grid(0);
+
+            // copy of integer lists
+            // create new lists
+
+            MyPage<int> csurfs_old = csurfs;
+            MyPage<int> csplits_old = csplits;
+            MyPage<int> csubs_old = csubs;
+
+            csurfs = null; csplits = null; csubs = null;
+            allocate_surf_arrays();
+
+            // compress cells and cinfo and sinfo arrays
+            // 4 cases:
+            // discard unsplit or sub cell:
+            //   continue
+            // keep unsplit or sub cell:
+            //   memcpy of cells and cinfo, setup csurfs
+            //   reset cells.ilocal and sinfo.csubs
+            //   increment nlocal, nunsplitlocal, nsublocal
+            // discard split cell:
+            //   flag all sub cells with other proc
+            //   continue
+            // keep split cell:
+            //   memcpy of cells and cinfo and sinfo, setup csurfs/csplits/csubs
+            //   reset sinfo.icell
+            //   reset cells.isplit, ditto for sub cells
+            //   increment nlocal, nsplitlocal
+            // relies on sub cells appearing in cells array after their split cell
+            //   no need for sub cells of one split cell to be contiguous before or after
+
+            int ncurrent = nlocal;
+            nlocal = nunsplitlocal = nsplitlocal = nsublocal = 0;
+
+            for (int icell = 0; icell < ncurrent; icell++)
+            {
+
+                // unsplit and sub cells
+
+                if (cells[icell].nsplit <= 1)
+                {
+                    if (cells[icell].proc != me) continue;
+
+                    if (icell != nlocal)
+                    {
+                        memcpy(&cells[nlocal], &cells[icell], sizeof(ChildCell));
+                        memcpy(&cinfo[nlocal], &cinfo[icell], sizeof(ChildInfo));
+                    }
+
+                    cells[nlocal].ilocal = nlocal;
+
+                    // for unsplit cell, new copy of all csurfs indices
+                    // for sub cell, just copy csurfs ptr from its split cell
+
+                    if (cells[nlocal].nsurf != 0)
+                    {
+                        if (cells[nlocal].nsplit == 1)
+                        {
+                            int[] oldcsurfs = cells[icell].csurfs;
+                            cells[nlocal].csurfs = csurfs.vget();
+                            memcpy(cells[nlocal].csurfs, oldcsurfs,
+                                   cells[nlocal].nsurf * sizeof(int));
+                            csurfs.vgot(cells[nlocal].nsurf);
+                        }
+                        else
+                            cells[nlocal].csurfs =
+                              cells[sinfo[cells[nlocal].isplit].icell].csurfs;
+                    }
+
+                    if (cells[nlocal].nsplit <= 0)
+                    {
+                        sinfo[cells[nlocal].isplit].csubs[-cells[nlocal].nsplit] = nlocal;
+                        nsublocal++;
+                    }
+                    else nunsplitlocal++;
+
+                    nlocal++;
+
+                    // split cells
+
+                }
+                else
+                {
+                    if (cells[icell].proc != me)
+                    {
+                        int isplit = cells[icell].isplit;
+                        int nsplit = cells[icell].nsplit;
+                        for (int i = 0; i < nsplit; i++)
+                        {
+                            int m = sinfo[isplit].csubs[i];
+                            cells[m].proc = cells[icell].proc;
+                        }
+                        continue;
+                    }
+
+                    if (icell != nlocal)
+                    {
+                        memcpy(&cells[nlocal], &cells[icell], sizeof(ChildCell));
+                        memcpy(&cinfo[nlocal], &cinfo[icell], sizeof(ChildInfo));
+                    }
+
+                    cells[nlocal].ilocal = nlocal;
+
+                    // new copy of all csurfs indices
+
+                    int[] oldcsurfs = cells[icell].csurfs;
+                    cells[nlocal].csurfs = csurfs.vget();
+                    memcpy(cells[nlocal].csurfs, oldcsurfs,
+                           cells[nlocal].nsurf * sizeof(int));
+                    csurfs.vgot(cells[nlocal].nsurf);
+
+                    // compress sinfo
+
+                    int isplit = cells[nlocal].isplit;
+                    if (isplit != nsplitlocal)
+                        memcpy(&sinfo[nsplitlocal], &sinfo[isplit], sizeof(SplitInfo));
+                    cells[nlocal].isplit = nsplitlocal;
+                    sinfo[nsplitlocal].icell = nlocal;
+
+                    // new copy of all csplits indices
+
+                    int[] oldcsplits = sinfo[isplit].csplits;
+                    sinfo[nsplitlocal].csplits = csplits.vget();
+                    memcpy(sinfo[nsplitlocal].csplits, oldcsplits,
+                           cells[nlocal].nsurf * sizeof(int));
+                    csplits.vgot(cells[nlocal].nsurf);
+
+                    // new csubs list of length nsplit
+                    // values unset for now, set one-by-one when sub cells are compressed
+
+                    int[] oldcsubs = sinfo[isplit].csubs;
+                    sinfo[nsplitlocal].csubs = csubs.vget();
+                    csubs.vgot(cells[nlocal].nsplit);
+
+                    // point each sub cell in old sinfo csubs at new compressed sinfo index
+
+                    int nsplit = cells[nlocal].nsplit;
+                    for (int i = 0; i < nsplit; i++)
+                        cells[oldcsubs[i]].isplit = nsplitlocal;
+
+                    nsplitlocal++;
+                    nlocal++;
+                }
+            }
+
+            hashfilled = 0;
+
+            // delete old integer lists
+
+            //delete csurfs_old;
+            //delete csplits_old;
+            //delete csubs_old;
+
+            // repoint particles in all remaining grid cells to new icell indices
+            // assumes particles are sorted and have not yet been compressed,
+            //   so count/first values in compressed cinfo data struct are still valid
+            // when done, particles are still sorted
+
+            Particle.OnePart[] particles = sparta.particle.particles;
+            int[] next = sparta.particle.next;
+
+            int ip;
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                ip = cinfo[icell].first;
+                while (ip >= 0)
+                {
+                    particles[ip].icell = icell;
+                    ip = next[ip];
+                }
+            }
+
+            // some fixes have post-compress operations to perform
+
+            if (sparta.modify.n_pergrid!=0) sparta.modify.compress_grid(1);
+        }
 
         void unpack_ghosts(int nsize, StringBuilder buf)
         {
@@ -75,7 +256,7 @@ namespace cstest
             }
         }
 
-        int pack_one(int icell,int ownflag, int molflag, int memflag,ref StringBuilder buf)
+        public int pack_one(int icell,int ownflag, int molflag, int memflag,ref StringBuilder buf)
         {
             int n = 0;
             

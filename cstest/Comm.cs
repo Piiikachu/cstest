@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 using bigint = System.Int64;
 using MPI_Request = System.Int32;
 namespace cstest
@@ -51,7 +52,114 @@ namespace cstest
             iparticle.create_procs(nneigh, neighlist, commsortflag);
         }
         //public int migrate_particles(int, int*);
-        //public virtual void migrate_cells(int);
+        public virtual void migrate_cells(int nmigrate)
+        {
+            int i, n;
+
+            Grid.ChildCell[] cells = sparta.grid.cells;
+            int nglocal = sparta.grid.nlocal;
+
+            // grow proc and size lists if needed
+
+            if (nmigrate > maxgproc)
+            {
+                maxgproc = nmigrate;
+                //memory->destroy(gproc);
+                //memory->destroy(gsize);
+                gproc = new int[maxgproc];
+                gsize = new int[maxgproc];
+                //memory->create(gproc, maxgproc, "comm:gproc");
+                //memory->create(gsize, maxgproc, "comm:gsize");
+            }
+
+            // fill proclist with procs to send to
+            // compute byte count needed to pack cells
+
+            int nsend = 0;
+            bigint boffset = 0;
+            StringBuilder sb = new StringBuilder();
+            for (int icell = 0; icell < nglocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                if (cells[icell].proc == me) continue;
+                gproc[nsend] = cells[icell].proc;
+                n = sparta.grid.pack_one(icell,1, 1, 0,ref sb);
+                gsize[nsend++] = n;
+                boffset += n;
+            }
+
+            if (boffset > Run.MAXSMALLINT)
+                sparta.error.one("Migrate cells send buffer exceeds 2 GB");
+            int offset = (int)boffset;
+
+            // reallocate sbuf as needed
+
+            if (offset > maxsendbuf)
+            {
+                //memory->destroy(sbuf);
+                maxsendbuf = offset;
+                sbuf = new char[maxsendbuf];
+                //memory->create(sbuf, maxsendbuf, "comm:sbuf");
+                //memset(sbuf, 0, maxsendbuf);
+            }
+
+            // pack cell info into sbuf
+            // only called for unsplit and split cells I no longer own
+
+            offset = 0;
+            for (int icell = 0; icell < nglocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                if (cells[icell].proc == me) continue;
+                char[] tmp = new char[maxsendbuf - offset];
+                Array.Copy(sbuf, offset, tmp, 0, maxsendbuf - offset);
+                StringBuilder sb1 = new StringBuilder($"{sbuf}"); 
+                offset += sparta.grid.pack_one(icell, 1, 1, 1, ref sb1);
+            }
+
+            // compress my list of owned grid cells to remove migrated cells
+            // compress particle list to remove particles in migrating cells
+            // unset particle sorted since compress_rebalance() does
+            //   and may receive particles which will then be unsorted
+
+            if (nmigrate!=0)
+            {
+                sparta.grid.compress();
+                sparta.particle.compress_rebalance();
+            }
+            else sparta.particle.sorted = 0;
+
+            // create irregular communication plan with variable size datums
+            // nrecv = # of incoming grid cells
+            // recvsize = total byte size of incoming grid + particle info
+            // DEBUG: append a sort=1 arg so that messages from other procs
+            //        are received in repeatable order, thus grid cells stay in order
+
+            if (igrid==null) igrid = new Irregular(sparta);
+            int recvsize;
+            int nrecv =
+              igrid.create_data_variable(nmigrate, gproc, gsize,out recvsize, commsortflag);
+
+            // reallocate rbuf as needed
+
+            if (recvsize > maxrecvbuf)
+            {
+                memory->destroy(rbuf);
+                maxrecvbuf = recvsize;
+                memory->create(rbuf, maxrecvbuf, "comm:rbuf");
+                memset(rbuf, 0, maxrecvbuf);
+            }
+
+            // perform irregular communication
+
+            igrid->exchange_variable(sbuf, gsize, rbuf);
+
+            // unpack received grid cells with their particles
+
+            offset = 0;
+            for (i = 0; i < nrecv; i++)
+                offset += grid->unpack_one(&rbuf[offset], 1, 1);
+        }
         //public int send_cells_adapt(int, int*, char*, char**);
         //public int irregular_uniform(int, int*, char*, int, char**);
         public void ring(int n, int nper, StringBuilder inbuf, int messtag,
@@ -100,7 +208,7 @@ namespace cstest
 
 
         protected Irregular iparticle,igrid,iuniform;
-        protected string sbuf,rbuf;
+        protected char[] sbuf,rbuf;
         protected int maxsendbuf, maxrecvbuf;
         protected int[] pproc,gproc,gsize;
         protected int maxpproc, maxgproc;

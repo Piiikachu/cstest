@@ -274,6 +274,53 @@ namespace cstest
 
                 
             }
+
+            // set clumped of not, depending on style
+            // NONE style does not change clumping
+
+            if (nprocs == 1 || bstyle == (int)Enum1.CLUMP || bstyle == (int)Enum1.BLOCK || bstyle == (int)Enum1.BISECTION)
+                sparta.grid.clumped = 1;
+            else if (bstyle != (int)Enum1.NONE) sparta.grid.clumped = 0;
+
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double time2 = sparta.mpi.MPI_Wtime();
+
+            // sort particles
+            // NOTE: not needed again if rcbwt = PARTICLE for bstyle = BISECTION ??
+
+            sparta.particle.sort();
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double time3 = sparta.mpi.MPI_Wtime();
+
+
+            // invoke init() so all grid cell info, including collide & fixes,
+            //   is ready to migrate
+            // for init, do not require surfs be assigned collision models
+            //   this allows balance call early in script, e.g. from ReadRestart
+            // migrate grid cells and their particles to new owners
+            // invoke grid methods to complete grid setup
+
+            int ghost_previous = sparta.grid.exist_ghost;
+
+            sparta.domain.boundary_collision_check = 0;
+            sparta.surf.surf_collision_check = 0;
+            sparta.init();
+            sparta.domain.boundary_collision_check = 1;
+            sparta.surf.surf_collision_check = 1;
+
+            sparta.grid.unset_neighbors();
+            sparta.grid.remove_ghosts();
+            sparta.comm.migrate_cells(nmigrate);
+
+            sparta.mpi.MPI_Barrier(world);
+            double time4 = sparta.mpi.MPI_Wtime();
+
+            sparta.grid.setup_owned();
+            sparta.grid.acquire_ghosts();
+            if (ghost_previous!=0) sparta.grid.reset_neighbors();
+            else sparta.grid.find_neighbors();
+            sparta.comm.reset_neighbors();
+
         }
 
 

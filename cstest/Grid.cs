@@ -753,7 +753,31 @@ namespace cstest
                 sparta.error.all(str);
             }
         }
-        //      public void unset_neighbors();
+        public void unset_neighbors()
+        {
+            if (exist_ghost==0) return;
+
+            // no change in neigh[] needed if nflag = NUNKNOWN, NPBUNKNOWN, or NBOUND
+
+            int i, index, nmask, nflag;
+            cellint[] neigh;
+
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                neigh = cells[icell].neigh;
+                nmask = cells[icell].nmask;
+
+                for (i = 0; i < 6; i++)
+                {
+                    index = neigh[i];
+                    nflag = neigh_decode(nmask, i);
+                    if (nflag == (int)Enum5.NCHILD || nflag == (int)Enum5.NPBCHILD)
+                        neigh[i] = cells[index].id;
+                    else if (nflag == (int)Enum5.NPARENT || nflag == (int)Enum5.NPBPARENT)
+                        neigh[i] = pcells[index].id;
+                }
+            }
+        }
         //      public void reset_neighbors();
         //      public void set_inout();
         public void check_uniform()
