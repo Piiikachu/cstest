@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using bigint = System.Int64;
 
 namespace cstest
 {
@@ -253,8 +254,334 @@ namespace cstest
                         break;
                 }
             }
+            // error test on particles
 
+            if (sparta.particle.exist !=0&& partflag == (int)Enum2.NONE)
+                sparta.error.all("Using read_surf particle none when particles exist");
 
+            // if specified, apply group and typeadd keywords
+            // these reset per-element mask/type info
+            if (grouparg!=0)
+            {
+                int igroup = sparta.surf.find_group(arg[grouparg]);
+                if (igroup < 0) igroup = sparta.surf.add_group(arg[grouparg]);
+                int groupbit = sparta.surf.bitmask[igroup];
+                if (dim == 2)
+                {
+                    int n = nline_old + nline_new;
+                    for (int i = nline_old; i < n; i++)
+                    {
+                        Surf.Line line = lines[i];
+                        line.mask |= groupbit;
+                        //lines[i].mask |= groupbit;
+                        lines[i] = line;
+
+                    }
+                }
+                else
+                {
+                    int n = ntri_old + ntri_new;
+                    for (int i = ntri_old; i < n; i++)
+                    {
+                        Surf.Tri tri = tris[i];
+                        tri.mask |= groupbit;
+                        tris[i] = tri;
+
+                    }
+                }
+            }
+
+            if (typeadd!=0)
+            {
+                if (dim == 2)
+                {
+                    int n = nline_old + nline_new;
+                    for (int i = nline_old; i < n; i++)
+                    {
+                        Surf.Line line = lines[i];
+                        line.type += typeadd;
+                        lines[i] = line;
+                    }
+                }
+                else
+                {
+                    int n = ntri_old + ntri_new;
+                    for (int i = ntri_old; i < n; i++)
+                    {
+                        Surf.Tri tri = tris[i];
+                        tri.type += typeadd;
+                        tris[i] = tri;
+                    }
+                }
+            }
+            // update Surf data structures
+
+            sparta.surf.pts = pts;
+            sparta.surf.lines = lines;
+            sparta.surf.tris = tris;
+            
+            sparta.surf.npoint = npoint_old + npoint_new;
+            sparta.surf.nline = nline_old + nline_new;
+            sparta.surf.ntri = ntri_old + ntri_new;
+
+            // extent of surf after geometric transformations
+            // compute sizes of smallest surface elements
+
+            double[,] extent=new double[3,2];
+            extent[0, 0] = extent[1, 0] = extent[2, 0] = BIG;
+            extent[0, 1] = extent[1, 1] = extent[2, 1] = -BIG;
+
+            int m = npoint_old;
+            for (int i = 0; i < npoint_new; i++)
+            {
+                extent[0,0] = Math.Min(extent[0,0], pts[m].x[0]);
+                extent[0,1] = Math.Max(extent[0,1], pts[m].x[0]);
+                extent[1,0] = Math.Min(extent[1,0], pts[m].x[1]);
+                extent[1,1] = Math.Max(extent[1,1], pts[m].x[1]);
+                extent[2,0] = Math.Min(extent[2,0], pts[m].x[2]);
+                extent[2,1] = Math.Max(extent[2,1], pts[m].x[2]);
+                m++;
+            }
+
+            double minlen=0, minarea=0;
+            if (dim == 2) minlen = shortest_line();
+            if (dim == 3) smallest_tri(out minlen,out minarea);
+
+            if (me == 0)
+            {
+                
+                if (sparta.screen!=null)
+                {
+                    string str1 = string.Format("  {0} {0} xlo xhi\n", extent[0, 0], extent[0, 1]);
+                    string str2 = string.Format("  {0} {0} ylo yhi\n", extent[1, 0], extent[1, 1]);
+                    string str3 = string.Format("  {0} {0} zlo zhi\n", extent[2, 0], extent[2, 1]);
+                    if (dim == 2)
+                    {
+                        string str4 = string.Format("  {0} min line length\n", minlen);
+                        Console.WriteLine(str1 + str2 + str3 + str4);
+                        new StreamWriter(sparta.screen).WriteLine(str1 + str2 + str3 + str4);
+                    }
+                    if (dim == 3)
+                    {
+                        string str4 = string.Format("  {0} min triangle edge length\n", minlen);
+                        string str5 = string.Format("  {0} min triangle area\n", minarea);
+                        Console.WriteLine(str1 + str2 + str3 + str4 + str5);
+                        new StreamWriter(sparta.screen).WriteLine(str1 + str2 + str3 + str4+str5);
+                    }
+                }
+                if (sparta.logfile != null)
+                {
+                    string str1 = string.Format("  {0} {1} xlo xhi\n", extent[0, 0], extent[0, 1]);
+                    string str2 = string.Format("  {0} {1} ylo yhi\n", extent[1, 0], extent[1, 1]);
+                    string str3 = string.Format("  {0} {1} zlo zhi\n", extent[2, 0], extent[2, 1]);
+                    if (dim == 2)
+                    {
+                        string str4 = string.Format("  {0} min line length\n", minlen);
+                        new StreamWriter(sparta.logfile).WriteLine(str1 + str2 + str3 + str4);
+                    }
+                    if (dim == 3)
+                    {
+                        string str4 = string.Format("  {0} min triangle edge length\n", minlen);
+                        string str5 = string.Format("  {0} min triangle area\n", minarea);
+                        new StreamWriter(sparta.logfile).WriteLine(str1 + str2 + str3 + str4+str5);
+                    }
+                }
+            }
+            // compute normals of new lines or triangles
+
+            if (dim == 2) sparta.surf.compute_line_normal(nline_old, nline_new);
+            else sparta.surf.compute_tri_normal(ntri_old, ntri_new);
+
+            // error check on new points,lines,tris
+            // all points must be inside or on surface of simulation box
+
+            sparta.surf.check_point_inside(npoint_old, npoint_new);
+
+            // write out new surf file if requested
+            // do this before assigning surfs to grid cells, in case an error occurs
+            if (filearg!=0)
+            {
+                WriteSurf wf = new WriteSurf(sparta);
+                if (sparta.comm.me == 0)
+                {
+                    FileStream fp = new FileStream(arg[filearg],FileMode.Open,FileAccess.Write);
+                    if (fp==null)
+                    {
+                        string str=string.Format( "Cannot open surface file {0}", arg[0]);
+                        sparta.error.one( str);
+                    }
+                    wf.write_file(fp);
+                    fp.Close();
+                }
+                //delete wf;
+            }
+
+            // -----------------------
+            // map surfs to grid cells
+            // -----------------------
+
+           sparta.mpi.MPI_Barrier(sparta.world);
+            double time2 =sparta.mpi.MPI_Wtime();
+
+            // sort particles
+
+            if (sparta.particle.exist!=0) sparta.particle.sort();
+
+            // make list of surf elements I own
+            // assign surfs to grid cells
+            // error checks to flag bad surfs
+
+            sparta.surf.setup_surf();
+
+            sparta.grid.unset_neighbors();
+            sparta.grid.remove_ghosts();
+
+            if (sparta.particle.exist !=0 && sparta.grid.nsplitlocal!=0)
+            {
+                Grid.ChildCell[] cells = sparta.grid.cells;
+                int nglocal = sparta.grid.nlocal;
+                for (int icell = 0; icell < nglocal; icell++)
+                    if (cells[icell].nsplit > 1)
+                        sparta.grid.combine_split_cell_particles(icell, 1);
+            }
+
+            sparta.grid.clear_surf();
+
+           sparta.mpi.MPI_Barrier(sparta.world);
+            double time3 =sparta.mpi.MPI_Wtime();
+
+            // error checks that can be done before surfs are mapped to grid cells
+
+            if (dim == 2)
+            {
+                sparta.surf.check_watertight_2d(npoint_old, nline_old);
+                check_neighbor_norm_2d();
+            }
+            else
+            {
+                sparta.surf.check_watertight_3d(npoint_old, ntri_old);
+                check_neighbor_norm_3d();
+            }
+
+           sparta.mpi.MPI_Barrier(sparta.world);
+            double time4 =sparta.mpi.MPI_Wtime();
+
+            // map surfs to grid cells then error check
+            // check done on per-grid-cell basis, too expensive to do globally
+
+            sparta.grid.surf2grid(1);
+
+            if (dim == 2) check_point_near_surf_2d();
+            else check_point_near_surf_3d();
+
+           sparta.mpi.MPI_Barrier(sparta.world);
+            double time5 =sparta.mpi.MPI_Wtime();
+
+            // re-setup grid ghosts and neighbors
+
+            sparta.grid.setup_owned();
+            sparta.grid.acquire_ghosts();
+            sparta.grid.reset_neighbors();
+            sparta.comm.reset_neighbors();
+
+           sparta.mpi.MPI_Barrier(sparta.world);
+            double time6 =sparta.mpi.MPI_Wtime();
+
+            // flag cells and corners as OUTSIDE or INSIDE
+
+            sparta.grid.set_inout();
+            sparta.grid.type_check();
+
+            // DEBUG
+            //sparta.grid.debug();
+
+           sparta.mpi.MPI_Barrier(sparta.world);
+            double time7 =sparta.mpi.MPI_Wtime();
+
+            // remove particles in any cell that is now INSIDE or has new surfs
+            // reassign particles in split cells to sub cell owner
+            // compress particles if any flagged for deletion
+
+            bigint ndeleted=0;
+            if (sparta.particle.exist!=0)
+            {
+                Grid.ChildCell[] cells = sparta.grid.cells;
+                Grid.ChildInfo[] cinfo = sparta.grid.cinfo;
+                int nglocal = sparta.grid.nlocal;
+                int delflag = 0;
+
+                for (int icell = 0; icell < nglocal; icell++)
+                {
+                    if (cinfo[icell].type == (int)Enum3.INSIDE)
+                    {
+                        if (partflag == (int)Enum2.KEEP)
+                            sparta.error.one( "Particles are inside new surfaces");
+                        if (cinfo[icell].count!=0) delflag = 1;
+                        sparta.particle.remove_all_from_cell(cinfo[icell].first);
+                        cinfo[icell].count = 0;
+                        cinfo[icell].first = -1;
+                        continue;
+                    }
+                    if (cells[icell].nsurf!=0 && cells[icell].nsplit >= 1)
+                    {
+                        int nsurf = cells[icell].nsurf;
+                        int[] csurfs = cells[icell].csurfs;
+                        int a;
+                        if (dim == 2)
+                        {
+                            for (a = 0; a < nsurf; a++)
+                            {
+                                if (csurfs[a] >= nline_old) break;
+                            }
+                        }
+                        else
+                        {
+                            for (a = 0; a < nsurf; a++)
+                            {
+                                if (csurfs[a] >= ntri_old) break;
+                            }
+                        }
+                        if (a < nsurf && partflag == (int)Enum2.CHECK)
+                        {
+                            if (cinfo[icell].count!=0) delflag = 1;
+                            sparta.particle.remove_all_from_cell(cinfo[icell].first);
+                            cinfo[icell].count = 0;
+                            cinfo[icell].first = -1;
+                        }
+                    }
+                    if (cells[icell].nsplit > 1)
+                        sparta.grid.assign_split_cell_particles(icell);
+                }
+                int nlocal_old = sparta.particle.nlocal;
+                if (delflag!=0) sparta.particle.compress_rebalance();
+                bigint delta = nlocal_old - sparta.particle.nlocal;
+               sparta.mpi.MPI_Allreduce(ref delta, ref ndeleted, 1,MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            }
+
+           sparta.mpi.MPI_Barrier(sparta.world);
+            double time8 =sparta.mpi.MPI_Wtime();
+
+            double time_total = time6 - time1;
+
+            if (sparta.comm.me == 0)
+            {
+                if (sparta.particle.exist!=0)
+                {
+                    string str1 = string.Format("  {0} deleted particles\n", ndeleted);
+                    string str2 = string.Format("  CPU time = {0} secs\n", time_total);
+                    string str3 = string.Format("  read/sort/check/surf2grid/ghost/inout/particle percent = {0} {1} {2} {3} {4} {5}\n",
+                            100.0 * (time2 - time1) / time_total, 100.0 * (time3 - time2) / time_total,
+                            100.0 * (time4 - time3) / time_total, 100.0 * (time5 - time4) / time_total,
+                            100.0 * (time6 - time5) / time_total, 100.0 * (time7 - time6) / time_total,
+                            100.0 * (time8 - time7) / time_total);
+                    Console.WriteLine(str1+str2+str3);
+                    if (sparta.logfile!=null)
+                    {
+                        new StreamWriter(sparta.logfile).WriteLine(str1 + str2 + str3);
+                    }
+                }
+                
+            }
         }
 
 
@@ -606,19 +933,146 @@ namespace cstest
                 }
             }
         }
-        //protected void check_neighbor_norm_2d();
-        //protected void check_neighbor_norm_3d();
+        protected void check_neighbor_norm_2d()
+        {
+            int p1, p2;
+
+            // count[I] = # of lines that vertex I is part of
+
+            int[] count;
+            int[,] p2e;
+            count = new int[npoint_new];
+            p2e = new int[npoint_new, 2];
+            //memory->create(count, npoint_new, "readsurf:count");
+            //memory->create(p2e, npoint_new, 2, "readsurf:count");
+            for (int i = 0; i < npoint_new; i++) count[i] = 0;
+
+            int m = nline_old;
+            for (int i = 0; i < nline_new; i++)
+            {
+                p1 = lines[m].p1 - npoint_old;
+                p2 = lines[m].p2 - npoint_old;
+                p2e[p1,count[p1]++] = m;
+                p2e[p2,count[p2]++] = m;
+                m++;
+            }
+
+            // check that norms of adjacent lines are not in opposite directions
+
+            double dot;
+            double[] norm1,norm2;
+
+            int nerror = 0;
+            int nwarn = 0;
+            for (int i = 0; i < npoint_new; i++)
+            {
+                if (count[i] == 1) continue;
+                norm1 = lines[p2e[i,0]].norm;
+                norm2 = lines[p2e[i,1]].norm;
+                dot = MathExtra.dot3(norm1, norm2);
+                if (dot <= -1.0) nerror++;
+                else if (dot < -1.0 + EPSILON_NORM) nwarn++;
+            }
+
+            if (nerror!=0)
+            {
+               string str=string.Format("Surface check failed with {0} infinitely thin line pairs", nerror);
+                sparta.error.all(str);
+            }
+            if (nwarn!=0)
+            {
+                string str = string.Format("Surface check found {0} nearly infinitely thin line pairs", nwarn);
+                if (me == 0) sparta.error.one( str);
+            }
+
+        }
+        protected void check_neighbor_norm_3d()
+        {
+            Dictionary<bigint, int> hash = new Dictionary<bigint, int>();
+            // insert each edge into hash with triangle as value
+
+            bigint p1, p2, p3, key;
+
+            int m = ntri_old;
+            for (int i = 0; i < ntri_new; i++)
+            {
+                p1 = tris[m].p1;
+                p2 = tris[m].p2;
+                p3 = tris[m].p3;
+                key = (p1 << 32) | p2;
+                hash[key] = m;
+                key = (p2 << 32) | p3;
+                hash[key] = m;
+                key = (p3 << 32) | p1;
+                hash[key] = m;
+                m++;
+            }
+            // check that norms of adjacent triangles are not in opposite directions
+
+            double dot;
+            double[] norm1,norm2;
+
+            int nerror = 0;
+            int nwarn = 0;
+            foreach (var it in hash)
+            {
+                p1 = it.Key >> 32;
+                p2 = it.Key & Run.MAXSMALLINT;
+                key = (p2 << 32) | p1;
+                if (hash[key] == hash[hash.Keys.Last()]) continue;
+                norm1 = tris[it.Value].norm;
+                norm2 = tris[hash[key]].norm;
+                dot = MathExtra.dot3(norm1, norm2);
+                if (dot <= -1.0) nerror++;
+                else if (dot < -1.0 + EPSILON_NORM) nwarn++;
+            }
+            
+
+            if (nerror!=0)
+            {
+                string str=string.Format("Surface check failed with {0} infinitely thin triangle pairs", nerror);
+                sparta.error.all(str);
+            }
+            if (nwarn!=0)
+            {
+                string str = string.Format("Surface check found {0} nearly infinitely thin triangle pairs", nwarn);
+                if (me == 0) sparta.error.one(str);
+            }
+        }
         //protected void check_point_near_surf_2d();
         //protected void check_point_near_surf_3d();
 
-        //protected void point_line_compare(int, Surf::Line*, double, int &, int &);
-        //protected void point_tri_compare(int, Surf::Tri*, double, int &, int &, int, int, int);
+        //protected void point_line_compare(int, Surf.Line*, double, int &, int &);
+        //protected void point_tri_compare(int, Surf.Tri*, double, int &, int &, int, int, int);
 
         //protected int find_edge(int, int);
         //protected void add_edge(int, int, int);
 
-        //protected double shortest_line();
-        //protected void smallest_tri(double &, double &);
+        protected double shortest_line()
+        {
+            double len = BIG;
+            int m = nline_old;
+            for (int i = 0; i < nline_new; i++)
+            {
+                len = Math.Min(len, sparta.surf.line_size(m));
+                m++;
+            }
+            return len;
+        }
+        protected void smallest_tri(out double len,out double area)
+        {
+            double lenone, areaone;
+
+            len = area = BIG;
+            int m = ntri_old;
+            for (int i = 0; i < ntri_new; i++)
+            {
+                areaone = sparta.surf.tri_size(m,out lenone);
+                len =  Math.Min(len, lenone);
+                area = Math.Min(area, areaone);
+                m++;
+            }
+        }
         //todo: it has its own open method (to open compressed file)
         int ParseInt(string str)
         {

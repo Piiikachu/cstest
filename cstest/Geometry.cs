@@ -1008,7 +1008,7 @@ namespace cstest
            return 1 if it does, 0 if not
         ------------------------------------------------------------------------- */
 
-        int point_on_hex(double[] x, double[] lo, double[] hi)
+        public static int point_on_hex(double[] x, double[] lo, double[] hi)
         {
             if ((x[0] == lo[0] || x[0] == hi[0]) &&
                 x[1] >= lo[1] && x[1] <= hi[1] && x[2] >= lo[2] && x[2] <= hi[2])

@@ -1,6 +1,7 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using bigint = System.Int64;
 namespace cstest
 {
@@ -230,20 +231,276 @@ namespace cstest
             for (int i = 0; i < nsc; i++) sc[i].init();
             for (int i = 0; i < nsr; i++) sr[i].init();
         }
-        //public int nelement();
-        //public void setup_surf();
+        public int nelement()
+        {
+            if (sparta.domain.dimension == 2) return nline;
+            return ntri;
+        }
+        public void setup_surf()
+        {
+            int me = sparta.comm.me;
+            int nprocs = sparta.comm.nprocs;
 
-        //public void compute_line_normal(int, int);
-        //public void compute_tri_normal(int, int);
+            int n = nelement();
+
+            // assign every Pth surf element to this proc
+
+            nlocal = n / nprocs;
+            if (me < n % nprocs) nlocal++;
+
+            //memory->destroy(mysurfs);
+            //memory->create(mysurfs, nlocal, "surf:mysurfs");
+            mysurfs = new int[nlocal];
+
+            nlocal = 0;
+            for (int m = me; m < n; m += nprocs)
+                mysurfs[nlocal++] = m;
+
+            // set bounding box of all surfs based on pts
+            // for 2d, set zlo,zhi to box bounds
+
+            int i;
+            for (i = 0; i < 3; i++)
+            {
+                bblo[i] = BIG;
+                bbhi[i] = -BIG;
+            }
+
+            double[] x;
+            for (int ipt = 0; ipt < npoint; ipt++)
+            {
+                x = pts[ipt].x;
+                for (i = 0; i < 3; i++)
+                {
+                    bblo[i] =Math.Min(bblo[i], x[i]);
+                    bbhi[i] =Math.Max(bbhi[i], x[i]);
+                }
+            }
+
+            if (sparta.domain.dimension == 2)
+            {
+                bblo[2] = sparta.domain.boxlo[2];
+                bbhi[2] = sparta.domain.boxhi[2];
+            }
+        }
+
+        public void compute_line_normal(int nstart, int n)
+        {
+            int p1, p2;
+            double[] z=new double[3], delta = new double[3], norm = new double[3];
+
+            z[0] = 0.0; z[1] = 0.0; z[2] = 1.0;
+
+            int m = nstart;
+            for (int i = 0; i < n; i++)
+            {
+                p1 = lines[m].p1;
+                p2 = lines[m].p2;
+                MathExtra.sub3(pts[p2].x, pts[p1].x, delta);
+                MathExtra.cross3(z, delta, norm);
+                MathExtra.norm3(norm);
+                lines[m].norm[0] = norm[0];
+                lines[m].norm[1] = norm[1];
+                lines[m].norm[2] = 0.0;
+                m++;
+            }
+        }
+        public void compute_tri_normal(int nstart, int n)
+        {
+            int p1, p2, p3;
+            double[] delta12=new double[3], delta13 = new double[3];
+
+            int m = nstart;
+            for (int i = 0; i < n; i++)
+            {
+                p1 = tris[m].p1;
+                p2 = tris[m].p2;
+                p3 = tris[m].p3;
+                MathExtra.sub3(pts[p2].x, pts[p1].x, delta12);
+                MathExtra.sub3(pts[p3].x, pts[p1].x, delta13);
+                MathExtra.cross3(delta12, delta13, tris[m].norm);
+                MathExtra.norm3(tris[m].norm);
+                m++;
+            }
+        }
         //public void quad_corner_point(int, double*, double*, double*);
         //public void hex_corner_point(int, double*, double*, double*);
-        //public double line_size(int);
+        public double line_size(int m)
+        {
+            double[] delta=new double[3];
+            MathExtra.sub3(pts[lines[m].p2].x, pts[lines[m].p1].x, delta);
+            return MathExtra.len3(delta);
+        }
         //public double axi_line_size(int);
-        //public double tri_size(int, double &);
+        public double tri_size(int m,out double len)
+        {
+            double[] delta12=new double[3], delta13 = new double[3], 
+                delta23 = new double[3], cross = new double[3];
 
-        //public void check_watertight_2d(int, int);
-        //public void check_watertight_3d(int, int);
-        //public void check_point_inside(int, int);
+            MathExtra.sub3(pts[tris[m].p2].x, pts[tris[m].p1].x, delta12);
+            MathExtra.sub3(pts[tris[m].p3].x, pts[tris[m].p1].x, delta13);
+            MathExtra.sub3(pts[tris[m].p3].x, pts[tris[m].p2].x, delta23);
+            len =Math.Min(MathExtra.len3(delta12), MathExtra.len3(delta13));
+            len =Math.Min(len, MathExtra.len3(delta23));
+
+            MathExtra.cross3(delta12, delta13, cross);
+            double area = 0.5 * MathExtra.len3(cross);
+            return area;
+        }
+
+        public void check_watertight_2d(int npoint_old, int nline_old)
+        {
+            int p1, p2;
+
+            int npoint_new = npoint - npoint_old;
+            int nline_new = nline - nline_old;
+
+            // count[I] = # of lines that vertex I is part of
+
+            int[] count;
+            count = new int[npoint_new];
+            //memory->create(count, npoint_new, "readsurf:count");
+            for (int i = 0; i < npoint_new; i++) count[i] = 0;
+
+            int ndup = 0;
+            int m = nline_old;
+            for (int i = 0; i < nline_new; i++)
+            {
+                p1 = lines[m].p1 - npoint_old;
+                p2 = lines[m].p2 - npoint_old;
+                count[p1]++;
+                count[p2]++;
+                if (count[p1] > 2) ndup++;
+                if (count[p2] > 2) ndup++;
+                m++;
+            }
+
+            if (ndup!=0)
+            {
+                string str=string.Format("Surface check failed with {0} duplicate points", ndup);
+                sparta.error.all( str);
+            }
+
+            // check that all counts are 2
+            // allow for exception if point on box surface
+
+            double[] boxlo = sparta.domain.boxlo;
+            double[] boxhi = sparta.domain.boxhi;
+
+            int nbad = 0;
+            for (int i = 0; i < npoint_new; i++)
+            {
+                if (count[i] == 0) nbad++;
+                else if (count[i] == 1)
+                {
+                    if (Geometry.point_on_hex(pts[i + npoint_old].x, boxlo, boxhi)==0) nbad++;
+                }
+            }
+
+            if (nbad!=0)
+            {
+                string str=string.Format("Surface check failed with {0} unmatched points", nbad);
+                sparta.error.all( str);
+            }
+
+            // clean up
+
+           // memory->destroy(count);
+        }
+        public void check_watertight_3d(int a, int ntri_old)
+        {
+            int ntri_new = ntri - ntri_old;
+
+            // hash directed edges of all triangles
+            // key = directed edge, value = # of times it appears in any triangle
+            // NOTE: could prealloc hash to correct size here
+
+
+            Dictionary<bigint, int> hash = new Dictionary<bigint, int>();
+
+            // insert each edge into hash
+            // should appear once in each direction
+            // error if any duplicate edges
+
+            bigint p1, p2, p3, key;
+
+            int ndup = 0;
+            int m = ntri_old;
+            for (int i = 0; i < ntri_new; i++)
+            {
+                p1 = tris[m].p1;
+                p2 = tris[m].p2;
+                p3 = tris[m].p3;
+                key = (p1 << 32) | p2;
+                if (hash[key] != hash[hash.Keys.Last()]) ndup++;
+                else hash[key] = 0;
+                key = (p2 << 32) | p3;
+                if (hash[key] != hash[hash.Keys.Last()]) ndup++;
+                else hash[key] = 0;
+                key = (p3 << 32) | p1;
+                if (hash[key] != hash[hash.Keys.Last()]) ndup++;
+                else hash[key] = 0;
+                m++;
+            }
+
+            if (ndup!=0)
+            {
+                string str=string.Format( "Surface check failed with {0} duplicate edges", ndup);
+                sparta.error.all( str);
+            }
+
+            // check that each edge has an inverted match
+            // allow for exception if edge on box surface
+
+            double[] boxlo = sparta.domain.boxlo;
+            double[] boxhi = sparta.domain.boxhi;
+
+            int nbad = 0;
+            foreach (var it in hash)
+            {
+                p1 = it.Key >> 32;
+                p2 = it.Key & Run.MAXSMALLINT;
+                key = (p2 << 32) | p1;
+                if (hash[key] == hash[hash.Keys.Last()])
+                {
+                    if (Geometry.point_on_hex(pts[(int)p1].x, boxlo, boxhi)==0 ||
+                        Geometry.point_on_hex(pts[(int)p2].x, boxlo, boxhi)==0) nbad++;
+                }
+
+            }
+            
+
+            if (nbad!=0)
+            {
+                string str=string.Format("Surface check failed with {0} unmatched edges", nbad);
+                sparta.error.all( str);
+            }
+
+        }
+        public void check_point_inside(int npoint_old, int npoint_new)
+        {
+            double[] x;
+
+            double[] boxlo = sparta.domain.boxlo;
+            double[] boxhi = sparta.domain.boxhi;
+
+            int m = npoint_old;
+            int nbad = 0;
+            for (int i = 0; i < npoint_new; i++)
+            {
+                x = pts[m].x;
+                if (x[0] < boxlo[0] || x[0] > boxhi[0] ||
+                x[1] < boxlo[1] || x[1] > boxhi[1] ||
+                x[2] < boxlo[2] || x[2] > boxhi[2]) nbad++;
+                m++;
+            }
+
+            if (nbad!=0)
+            {
+                string str=string.Format("{0} surface points are not inside simulation box",nbad);
+                sparta.error.all(str);
+            }
+        }
         private SPARTA sparta;
 
         public void add_collide(int narg, string[] args)
@@ -306,7 +563,21 @@ namespace cstest
         }
 
         //public void group(int, char**);
-        //public int add_group(const char*);
+        public int add_group(string id)
+        {
+            if (ngroup == MAXGROUP)
+                sparta.error.all("Cannot have more than 32 surface groups");
+
+            int n = id.Length + 1;
+            gnames[ngroup] = string.Copy(id);
+
+            for (int i = 0; i < n - 1; i++)
+                if (!char.IsLetterOrDigit(id[i]) && id[i] != '_')
+                    sparta.error.all("Group ID must be alphanumeric or underscore characters");
+
+            ngroup++;
+            return ngroup - 1;
+        }
         public int find_group(string id)
         {
             int igroup;

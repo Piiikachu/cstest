@@ -1337,7 +1337,7 @@ namespace cstest
         }
         //virtual void grow_sinfo(int);
 
-        //void surf2grid_stats();
+       
         //void flow_stats();
         //double flow_volume();
 
@@ -1346,7 +1346,7 @@ namespace cstest
         //// callback function for ring communication
 
         //static Grid* gptr;
-       
+
         public void weight(int narg, string[] arg)
         {
             int i;

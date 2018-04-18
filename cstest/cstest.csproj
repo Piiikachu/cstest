@@ -49,6 +49,8 @@
     <Compile Include="Compute.cs" />
     <Compile Include="CreateBox.cs" />
     <Compile Include="CreateGrid.cs" />
+    <Compile Include="Cut2d.cs" />
+    <Compile Include="Cut3d.cs" />
     <Compile Include="Domain.cs" />
     <Compile Include="Dump.cs" />
     <Compile Include="Error.cs" />
@@ -72,6 +74,7 @@
     <Compile Include="mpi.cs" />
     <Compile Include="MyConst.cs" />
     <Compile Include="MyPage.cs" />
+    <Compile Include="MyVec.cs" />
     <Compile Include="Output.cs" />
     <Compile Include="Particle.cs" />
     <Compile Include="Program.cs" />
@@ -96,6 +99,7 @@
     <Compile Include="Variable.cs" />
     <Compile Include="Version.cs" />
     <Compile Include="WriteRestart.cs" />
+    <Compile Include="WriteSurf.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

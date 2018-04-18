@@ -312,7 +312,7 @@ namespace cstest
 
             sparta.grid.unset_neighbors();
             sparta.grid.remove_ghosts();
-           sparta.comm.migrate_cells(nmigrate); 
+            sparta.comm.migrate_cells(nmigrate); 
 
             sparta.mpi.MPI_Barrier(sparta.world);
             double time4 = sparta.mpi.MPI_Wtime();
