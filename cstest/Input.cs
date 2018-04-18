@@ -324,13 +324,15 @@ namespace cstest
         ------------------------------------------------------------------------- */
         private void Parseline(string line)
         {
+            Console.WriteLine(line);
             if (string.IsNullOrWhiteSpace(line))
             {
                 return;
             }
+            
             if (line.StartsWith("#"))
             {
-                line.Remove(0);
+                //line.Remove(0);
                 return;
             }
 
@@ -353,7 +355,7 @@ namespace cstest
             string[] strArray = strings.ToArray();
             narg = strArray.Length - 1;
             arg = strArray;
-            System.Console.Write("\n"+strArray[0]+"...........");
+            //System.Console.Write("\n"+strArray[0]+"...........");
             execute_command(strings[0]);
             
 
@@ -509,25 +511,25 @@ namespace cstest
         private void read_surf()
         {
             new ReadSurf(sparta).command(narg, arg);
-            Console.WriteLine("done");
+             
         }
 
         private void balance_grid()
         {
             new BalanceGrid(sparta).command(narg, arg);
-            Console.WriteLine("done");
+             
         }
 
         private void create_grid()
         {
             new CreateGrid(sparta).command(narg, arg);
-            Console.WriteLine("done");
+             
         }
 
         private void create_box()
         {
             new CreateBox(sparta).command(narg, arg);
-            Console.WriteLine("done");
+             
 
         }
 
@@ -661,7 +663,7 @@ namespace cstest
         private void boundary()
         {
             sparta.domain.set_boundary(narg, arg);
-            Console.WriteLine("done");
+             
         }
         private void bound_modify()
         {
@@ -696,7 +698,7 @@ namespace cstest
                     break;
             }
 
-            Console.WriteLine("done");
+             
 
 
         }
@@ -717,7 +719,7 @@ namespace cstest
             sparta.domain.dimension = System.Int32.Parse(arg[1]);
             if (sparta.domain.dimension != 2 && sparta.domain.dimension != 3)
                 sparta.error.all( "Illegal dimension command");
-            Console.WriteLine("done");
+             
         }
         private void dump(){}
         private void dump_modify(){}
@@ -726,12 +728,12 @@ namespace cstest
             string[] argss = new string[narg];
             Array.Copy(arg, 1, argss, 0, narg);
             sparta.modify.add_fix(narg, argss);
-            Console.WriteLine("done");
+             
         }
         private void global()
         {
             sparta.update.global(narg, arg);
-            Console.WriteLine("done");
+             
         }
         private void group(){}
         private void mixture()
@@ -739,7 +741,7 @@ namespace cstest
             string[] argss = new string[narg];
             Array.Copy(arg, 1, argss, 0, narg);
             sparta.particle.add_mixture(narg, argss);
-            Console.WriteLine("done");
+             
         }
         private void package(){}
         private void react_command(){}
@@ -763,35 +765,35 @@ namespace cstest
             //update->ranmaster->init(seed);
             sparta.update.ranmaster.init(seed);
 
-            Console.WriteLine("done");
+             
             //System.Console.WriteLine("input.seed()");
         }
         private void species()
         {
             sparta.particle.add_species(narg, arg);
-            Console.WriteLine("done");
+             
 
         }
         private void stats()
         {
             sparta.output.set_stats(narg, arg);
-            Console.WriteLine("done");
+             
         }
         private void stats_modify(){}
         private void stats_style()
         {
             sparta.output.create_stats(narg, arg);
-            Console.WriteLine("done");
+             
         }
         private void surf_collide()
         {
             sparta.surf.add_collide(narg, arg);
-            Console.WriteLine("done");
+             
         }
         private void surf_modify()
         {
             sparta.surf.modify_params(narg, arg);
-            Console.WriteLine("done");
+             
         }
         private void surf_react(){}
         private void timestep()
@@ -800,7 +802,7 @@ namespace cstest
             double dt = double.Parse(arg[1]);
             if (dt <= 0.0) sparta.error.all("Illegal timestep command");
             sparta.update.dt = dt;
-            Console.WriteLine("done");
+             
         }
         private void uncompute(){}
         private void undump(){}

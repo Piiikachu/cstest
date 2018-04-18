@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using cellint = System.Int32;
+using bigint = System.Int64;
+using System.IO;
 
 namespace cstest
 {
@@ -310,7 +312,7 @@ namespace cstest
 
             sparta.grid.unset_neighbors();
             sparta.grid.remove_ghosts();
-            Console.WriteLine("balancegrid ->sparta.comm.migrate_cells(nmigrate);"); 
+           sparta.comm.migrate_cells(nmigrate); 
 
             sparta.mpi.MPI_Barrier(sparta.world);
             double time4 = sparta.mpi.MPI_Wtime();
@@ -319,17 +321,152 @@ namespace cstest
             sparta.grid.acquire_ghosts();
             if (ghost_previous!=0)
             {
-                Console.WriteLine("sparta.grid.reset_neighbors();"); 
+               sparta.grid.reset_neighbors(); 
             }
             else sparta.grid.find_neighbors();
             sparta.comm.reset_neighbors();
+
+
+            // reallocate per grid arrays in per grid dumps
+
+            for (int i = 0; i < sparta.output.ndump; i++)
+                sparta.output.dump[i].reset_grid();
+
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double time5 = sparta.mpi.MPI_Wtime();
+
+            // stats on balance operation
+            // only print if outflag = 1
+            // some callers suppress output, e.g. ReadRestart
+
+            bigint count = nmigrate;
+            bigint nmigrate_all=0;
+            sparta.mpi.MPI_Allreduce(ref count, ref nmigrate_all, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            double time_total = time5 - time1;
+
+            if (sparta.comm.me == 0 && outflag != 0)
+            {
+                string str1 = string.Format("Balance grid migrated {0} cells\n", nmigrate_all);
+                string str2 = string.Format("  CPU time = {0:G} secs\n", time_total);
+                string str3 = string.Format("  reassign/sort/migrate/ghost percent = {0} {1} {2} {3}\n",
+                            100.0 * (time2 - time1) / time_total, 100.0 * (time3 - time2) / time_total,
+                            100.0 * (time4 - time3) / time_total, 100.0 * (time5 - time4) / time_total);
+
+                Console.WriteLine(str1 + str2 + str3);
+                if (sparta.screen != null)
+                {
+                    new StreamWriter(sparta.screen).WriteLine(str1 + str2 + str3);
+                    //fprintf(screen, "Balance grid migrated " BIGINT_FORMAT " cells\n",
+                    //        nmigrate_all);
+                    //fprintf(screen, "  CPU time = %g secs\n", time_total);
+                    //fprintf(screen, "  reassign/sort/migrate/ghost percent = %g %g %g %g\n",
+                    //        100.0 * (time2 - time1) / time_total, 100.0 * (time3 - time2) / time_total,
+                    //        100.0 * (time4 - time3) / time_total, 100.0 * (time5 - time4) / time_total);
+                }
+                if (sparta.logfile!=null)
+                {
+                    new StreamWriter(sparta.logfile).WriteLine(str1 + str2 + str3);
+                }
+
+            }
 
         }
 
 
         private void procs2grid(int nx, int ny, int nz,ref int px,ref int py,ref int pz)
         {
+            int upx = px;
+            int upy = py;
+            int upz = pz;
 
+            int nprocs = sparta.comm.nprocs;
+
+            // all 3 proc counts are specified
+
+            if (px!=0 && py != 0 && pz != 0) return;
+
+            // 2 out of 3 proc counts are specified
+
+            if (py > 0 && pz > 0)
+            {
+                px = nprocs / (py * pz);
+                return;
+            }
+            else if (px > 0 && pz > 0)
+            {
+                py = nprocs / (px * pz);
+                return;
+            }
+            else if (px > 0 && py > 0)
+            {
+                pz = nprocs / (px * py);
+                return;
+            }
+
+            // determine cross-sectional areas
+            // area[0] = xy, area[1] = xz, area[2] = yz
+
+            double[] area=new double[3];
+            area[0] = nx * ny;
+            area[1] = nx * nz;
+            area[2] = ny * nz;
+
+            double bestsurf = 2.0 * (area[0] + area[1] + area[2]);
+
+            // loop thru all possible factorizations of nprocs
+            // only consider valid cases that match procgrid settings
+            // surf = surface area of a proc sub-domain
+
+            int ipx, ipy, ipz, valid;
+            double surf;
+
+            ipx = 1;
+            while (ipx <= nprocs)
+            {
+                valid = 1;
+                if (upx!=0 && ipx != upx) valid = 0;
+                if (nprocs % ipx != 0) valid = 0;
+                if (valid==0)
+                {
+                    ipx++;
+                    continue;
+                }
+
+                ipy = 1;
+                while (ipy <= nprocs / ipx)
+                {
+                    valid = 1;
+                    if (upy!=0 && ipy != upy) valid = 0;
+                    if ((nprocs / ipx) % ipy!=0) valid = 0;
+                    if (valid==0)
+                    {
+                        ipy++;
+                        continue;
+                    }
+
+                    ipz = nprocs / ipx / ipy;
+                    valid = 1;
+                    if (upz != 0 && ipz != upz) valid = 0;
+                    if (sparta.domain.dimension == 2 && ipz != 1) valid = 0;
+                    if (valid==0)
+                    {
+                        ipy++;
+                        continue;
+                    }
+
+                    surf = area[0] / ipx / ipy + area[1] / ipx / ipz + area[2] / ipy / ipz;
+                    if (surf < bestsurf)
+                    {
+                        bestsurf = surf;
+                        px = ipx;
+                        py = ipy;
+                        pz = ipz;
+                    }
+                    ipy++;
+                }
+
+                ipx++;
+            }
         }
     }
 }

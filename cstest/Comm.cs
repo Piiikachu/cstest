@@ -102,7 +102,8 @@ namespace cstest
                 //memory->create(sbuf, maxsendbuf, "comm:sbuf");
                 //memset(sbuf, 0, maxsendbuf);
             }
-
+            sbuf = new char[maxsendbuf];
+            rbuf = new char[maxsendbuf];
             // pack cell info into sbuf
             // only called for unsplit and split cells I no longer own
 
@@ -165,7 +166,7 @@ namespace cstest
             {
                 offset += sparta.grid.unpack_one(new StringBuilder(), 1, 1);
             }
-            Console.Write("comm.migrate_cells()->unpackone");
+            Console.Write("comm.migrate_cells()->unpackone\n");
             for (int a = offset; a < rbuf.Length-1-offset; a++)
             {
                 Console.Write("{0}",rbuf[a]);

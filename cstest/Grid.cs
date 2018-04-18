@@ -778,7 +778,58 @@ namespace cstest
                 }
             }
         }
-        //      public void reset_neighbors();
+        public void reset_neighbors()
+        {
+            if (exist_ghost==0) return;
+
+            // insure all cell IDs (owned, ghost, parent) are hashed
+
+            rehash();
+
+            // set neigh[] and nmask of each owned and ghost child cell
+            // hash lookup can reset nmask to CHILD or UNKNOWN
+            // no change in neigh[] or nmask needed if nflag = NBOUND
+
+            int i, nmask, nflag;
+            cellint[] neigh;
+
+            for (int icell = 0; icell < nlocal + nghost; icell++)
+            {
+                neigh = cells[icell].neigh;
+                nmask = cells[icell].nmask;
+
+                for (i = 0; i < 6; i++)
+                {
+                    nflag = neigh_decode(nmask, i);
+                    if (nflag ==(int)Enum5.NCHILD || nflag == (int)Enum5.NPBCHILD)
+                    {
+                        if (hash[neigh[i]] == hash[hash.Keys.Last()])
+                        {
+                            if (nflag == (int)Enum5.NCHILD) nmask = neigh_encode((int)Enum5.NUNKNOWN, nmask, i);
+                            else nmask = neigh_encode((int)Enum5.NPBUNKNOWN, nmask, i);
+                        }
+                        else neigh[i] = hash[neigh[i]] - 1;
+
+                    }
+                    else if (nflag == (int)Enum5.NPARENT || nflag == (int)Enum5.NPBPARENT)
+                    {
+                        neigh[i] = -hash[neigh[i]] - 1;
+
+                    }
+                    else if (nflag == (int)Enum5.NUNKNOWN || nflag == (int)Enum5.NPBUNKNOWN)
+                    {
+                        if (hash[neigh[i]] != hash[hash.Keys.Last()])
+                        {
+                            neigh[i] = hash[neigh[i]] - 1;
+                            if (nflag == (int)Enum5.NUNKNOWN) nmask = neigh_encode((int)Enum5.NCHILD, nmask, i);
+                            else nmask = neigh_encode((int)Enum5.NPBCHILD, nmask, i);
+                        }
+                    }
+                }
+
+                cells[icell].nmask = nmask;
+            }
+        }
         //      public void set_inout();
         public void check_uniform()
         {
