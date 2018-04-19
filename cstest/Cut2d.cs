@@ -341,13 +341,16 @@ namespace cstest
                     push(p2);
                 }
 
-                cline = clines[n];
+                //cline = clines[n];
                 cline.line = i;
+                cline.x = new double[2];
+                cline.y = new double[2];
 
                 // clip PQ to cell and store as XY in Cline
 
                 x = cline.x;
                 y = cline.y;
+                
                 clip(p1, p2, x, y);
 
                 // discard clipped line if only one point
@@ -373,7 +376,7 @@ namespace cstest
                     double dot = MathExtra.dot3(line.norm, l2b);
                     if (dot > 0.0) noutside++;
                     if (dot < 0.0) ninside++;
-
+                    clines.Add(cline);
                     continue;
                 }
 
@@ -395,7 +398,7 @@ namespace cstest
                         grazeflag--;
                     }
                 }
-
+                clines.Add(cline);
                 n++;
             }
 
@@ -461,12 +464,13 @@ namespace cstest
 
                 else
                 {
-                    Point point = points[npt];
+                    Point point = new Point();
+                    point.x = new double[2];
                     point.x[0] = pt[0];
                     point.x[1] = pt[1];
                     point.type = (int)Enum3.ENTRY;
                     point.line = clines[i].line;
-                    points[npt] = point;
+                    points.Add( point);
                     firstpt = npt;
                     npt++;
                 }
@@ -494,11 +498,12 @@ namespace cstest
 
                 else
                 {
-                    Point point = points[npt];
+                    Point point = new Point();
+                    point.x = new double[2];
                     point.x[0] = pt[0];
                     point.x[1] = pt[1];
                     point.type = (int)Enum3.EXIT;
-                    points[npt] = point;
+                    points.Add(point);
                     point = points[firstpt];
                     point.next = npt;
                     points[firstpt] = point;
@@ -536,12 +541,12 @@ namespace cstest
                 if (cpt[0] == points[j].x[0] && cpt[1] == points[j].x[1]) break;
             if (j == npt || points[j].type ==(int)Enum3.TWO)
             {
-                Point point = points[npt];
-
+                Point point =new Point();
+                point.x = new double[2];
                 point.x[0] = cpt[0];
                 point.x[1] = cpt[1];
                 point.type = (int)Enum3.CORNER;
-                points[npt]=point;
+                points.Add(point);
                 ipt1 = npt++;
             }
             else ipt1 = j;
@@ -556,11 +561,12 @@ namespace cstest
                 if (cpt[0] == points[j].x[0] && cpt[1] == points[j].x[1]) break;
             if (j == npt || points[j].type == (int)Enum3.TWO)
             {
-                Point point = points[npt];
+                Point point=new Point();
+                point.x = new double[2];
                 point.x[0] = cpt[0];
                 point.x[1] = cpt[1];
                 point.type = (int)Enum3.CORNER;
-                points[npt] = point;
+                points.Add( point);
                 ipt2 = npt++;
             }
             else ipt2 = j;
@@ -575,11 +581,12 @@ namespace cstest
                 if (cpt[0] == points[j].x[0] && cpt[1] == points[j].x[1]) break;
             if (j == npt || points[j].type == (int)Enum3.TWO)
             {
-                Point point = points[npt];
+                Point point = new Point();
+                point.x = new double[2];
                 point.x[0] = cpt[0];
                 point.x[1] = cpt[1];
                 point.type = (int)Enum3.CORNER;
-                points[npt] = point;
+                points.Add(point);
                 ipt3 = npt++;
             }
             else ipt3 = j;
@@ -595,11 +602,12 @@ namespace cstest
                 if (cpt[0] == points[j].x[0] && cpt[1] == points[j].x[1]) break;
             if (j == npt || points[j].type == (int)Enum3.TWO)
             {
-                Point point = points[npt];
+                Point point = new Point();
+                point.x = new double[2];
                 point.x[0] = cpt[0];
                 point.x[1] = cpt[1];
                 point.type = (int)Enum3.CORNER;
-                points[npt] = point;
+                points.Add(point);
                 ipt4 = npt++;
             }
             else ipt4 = j;
@@ -725,7 +733,7 @@ namespace cstest
 
             int n = points.Count;
             used=new List<int>(n);
-            for (int i = 0; i < n; i++) used[i] = 0;
+            for (int i = 0; i < n; i++) used.Add(0);
 
             // iterate over all pts
             // start a loop at any unused pt

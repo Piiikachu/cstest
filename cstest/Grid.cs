@@ -297,14 +297,17 @@ namespace cstest
             c.iparent = iparent;
             c.proc = me;
             c.ilocal = nlocal;
-            c.lo = lo;
-            c.hi = hi;
-            //c.lo[0] = lo[0];
-            //c.lo[1] = lo[1];
-            //c.lo[2] = lo[2];
-            //c.hi[0] = hi[0];
-            //c.hi[1] = hi[1];
-            //c.hi[2] = hi[2];
+
+            //c.lo = lo;
+            //c.hi = hi;
+            c.lo = new double[3];
+            c.hi = new double[3];
+            c.lo[0] = lo[0];
+            c.lo[1] = lo[1];
+            c.lo[2] = lo[2];
+            c.hi[0] = hi[0];
+            c.hi[1] = hi[1];
+            c.hi[2] = hi[2];
             c.nsurf = 0;
             c.csurfs = null;
             c.nsplit = 1;

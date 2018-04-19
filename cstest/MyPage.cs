@@ -26,7 +26,7 @@ namespace cstest
             npage += pagedelta;
             //pages = (T**)realloc(pages, npage * sizeof(T*));
             pages = new List<T[]>(npage);
-            if (pages!=null)
+            if (pages==null)
             {
                 errorflag = 2;
                 return;
@@ -34,8 +34,8 @@ namespace cstest
             for (int i = npage - pagedelta; i < npage; i++)
             {
                 //pages[i] = (T*)malloc(pagesize * sizeof(T));
-                pages[i] = new T[pagesize];
-                if (pages[i]!=null) errorflag = 2;
+                pages.Add( new T[pagesize]);
+                if (pages[i]==null) errorflag = 2;
             }
         }
 
@@ -152,8 +152,9 @@ namespace cstest
         {
             ndatum = nchunk = 0;
             index = ipage = 0;
-            page = null;
+            //page = null;
             //page = pages[ipage];
+
         }
 
         // return total size of all allocated pages
