@@ -233,7 +233,14 @@ namespace cstest
             }
         }
         //public void sort_allocate();
-        //public void remove_all_from_cell(int);
+        public void remove_all_from_cell(int ip)
+        {
+            while (ip >= 0)
+            {
+                particles[ip].icell = -1;
+                ip = next[ip];
+            }
+        }
         //public virtual void grow(int);
         public virtual void grow_species()
         {

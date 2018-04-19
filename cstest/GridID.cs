@@ -33,7 +33,32 @@ namespace cstest
             if (index > 0) return index - 1;
             return id_find_child(-index - 1, x);
         }
-        //      int id_find_parent(cellint, cellint &);
+        public int id_find_parent(cellint id,out cellint ichild)
+        {
+            int nbits, newbits, mask, index;
+            cellint idparent, idnew;
+            ParentCell p;
+
+            int iparent = 0;
+            while (true)
+            {
+                p = pcells[iparent];
+                idparent = p.id;
+                nbits = p.nbits;
+                newbits = p.newbits;
+
+                // ichild = the newbits above nbits in id
+
+                mask = (1 << newbits) - 1;
+                ichild = (id >> nbits) & mask;
+                idnew = idparent | (ichild << nbits);
+                if (idnew == id) break;
+                index = hash[idnew];
+                iparent = -index - 1;
+            }
+
+            return iparent;
+        }
         //      cellint id_str2num(char*);
         //      void id_num2str(cellint, char*);
         //      void id_pc_split(char*, char*, char*);

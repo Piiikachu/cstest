@@ -8,12 +8,25 @@ namespace cstest
 {
     public class Cut3d
     {
-        
+        enum Enum1{ UNKNOWN, OUTSIDE, INSIDE, OVERLAP };     // several files
+        enum Enum2{ CTRI, CTRIFACE, FACEPGON, FACE };
+        enum Enum3{ EXTERIOR, INTERIOR, BORDER };
+        enum Enum4{ ENTRY, EXIT, TWO, CORNER };              // same as Cut2d
+
+        public const double EPSCELL = 1.0e-10;   // tolerance for pushing surf pts to cell surface
+
+        // cell ID for 2d or 3d cell
+
+        //#define VERBOSE
+        public const int VERBOSE_ID = 4873;
+        //#define VERBOSE_ID 27810406321L
+
         public int npushmax;           // # of push options to try
         public int[] npushcell=new int[4];       // tally of cells that required surf point push
-         
+        private SPARTA sparta;
         public Cut3d(SPARTA sparta)
         {
+            this.sparta = sparta;
             cut2d = new Cut2d(sparta, 0);
             for (int i = 0; i <= cut2d.npushmax; i++)
             {
@@ -62,8 +75,272 @@ namespace cstest
                  int nsurf_caller, int[] surfs_caller,
                  out double[] vols_caller, int[] surfmap,
                  int[] corners, out int xsub, double[] xsplit)
-        {
+       {
+            Console.WriteLine("cut3d.split");
+            vols_caller = null;
+            xsub = 0;
+            return 0;
+//            id = id_caller;
+//            lo = lo_caller;
+//            hi = hi_caller;
+//            nsurf = nsurf_caller;
+//            surfs = surfs_caller;
 
+//            // perform cut/split
+//            // first attempt is with no pushing of surface points
+//            // if fails, then try again with push options
+//            // if all push options fail, then print error message
+
+//            int nsplit, errflag;
+//            pushflag = 0;
+
+
+//            // debug 
+//            //if (id == VERBOSE_ID) npushmax = 0;
+
+//            while (true)
+//            {
+//                errflag = add_tris();
+//                if (errflag != 0)
+//                {
+//                    if (push_increment() != 0) continue;
+//                    break;
+//                }
+
+////# ifdef VERBOSE
+////                if (id == VERBOSE_ID) print_bpg("BPG after added tris");
+////#endif
+
+//                int grazeflag = clip_tris();
+
+//                // DEBUG
+//                //totcell++;
+//                //totsurf += nsurf;
+//                //totvert += verts.n;
+//                //totedge += edges.n;
+
+////# ifdef VERBOSE
+////                if (id == VERBOSE_ID) print_bpg("BPG after clipped tris");
+////#endif
+
+//                // all triangles just touched cell surface
+//                // mark corner points based on grazeflag and in/out tri orientation
+//                // return vol = 0.0 for UNKNOWN/INSIDE, full cell vol for OUTSIDE
+//                // vol is changed in Grid::set_inout() if OVERLAP cell corners are marked
+
+//                if (empty != 0)
+//                {
+//                    if (pushflag != 0) npushcell[pushflag]++;
+
+//                    int mark = UNKNOWN;
+//                    if (grazeflag || inout == INSIDE) mark = INSIDE;
+//                    else if (inout == OUTSIDE) mark = OUTSIDE;
+//                    corners[0] = corners[1] = corners[2] = corners[3] =
+//                      corners[4] = corners[5] = corners[6] = corners[7] = mark;
+
+
+//                    /*
+//                    double ctr[3];
+//                    ctr[0] = 0.5*(lo[0]+hi[0]);
+//                    ctr[1] = 0.5*(lo[1]+hi[1]);
+//                    ctr[2] = 0.5*(lo[2]+hi[2]);
+//                    int check = 0;
+//                    if (mark == INSIDE && 
+//                        (fabs(ctr[0]) > 1.0 || fabs(ctr[1]) > 1.0 || fabs(ctr[2]) > 1.0))
+//                      check = 1;
+//                    if (mark == OUTSIDE && 
+//                        (fabs(ctr[0]) < 1.0 && fabs(ctr[1]) < 1.0 && fabs(ctr[2]) < 1.0))
+//                      check = 1;
+//                    if (mark == UNKNOWN) check = 1;
+//                    if (check) {
+//                      printf("BAD MARKING %d %g %g %g: mark %d: "
+//                             "nsurf %d pushflag %d grazeflag %d inout %d\n",
+//                             id,ctr[0],ctr[1],ctr[2],mark,nsurf,pushflag,grazeflag,inout);
+//                    }
+//                    */
+
+
+//                    double vol = 0.0;
+//                    if (mark == OUTSIDE) vol = (hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]);
+
+//                    vols.grow(1);
+//                    vols[0] = vol;
+//                    vols_caller = &vols[0];
+//                    return 1;
+//                }
+
+//                ctri_volume();
+//                errflag = edge2face();
+//                if (errflag != 0)
+//                {
+//                    if (push_increment() != 0) continue;
+//                    break;
+//                }
+
+//                double[] lo2d=new double[2], hi2d = new double[2];
+
+//                for (int iface = 0; iface < 6; iface++)
+//                {
+
+
+
+//                    // debug 
+//                    //if (id == VERBOSE_ID) printf("FACE %d\n",iface);
+
+
+
+//                    if (facelist[iface].n)
+//                    {
+//                        face_from_cell(iface, lo2d, hi2d);
+//                        edge2clines(iface);
+//                        errflag = cut2d->split_face(id, iface, lo2d, hi2d);
+//                        if (errflag != 0) break;
+//                        errflag = add_face_pgons(iface);
+//                        if (errflag != 0) break;
+//                    }
+//                    else
+//                    {
+//                        face_from_cell(iface, lo2d, hi2d);
+//                        errflag = add_face(iface, lo2d, hi2d);
+//                        if (errflag != 0) break;
+//                    }
+//                }
+
+//                if (errflag != 0)
+//                {
+//                    if (push_increment()) continue;
+//                    break;
+//                }
+
+//                remove_faces();
+
+//# ifdef VERBOSE
+//                if (id == VERBOSE_ID) print_bpg("BPG after faces");
+//#endif
+
+//                errflag = check();
+//                if (errflag)
+//                {
+//                    if (push_increment()) continue;
+//                    break;
+//                }
+
+//                walk();
+
+//# ifdef VERBOSE
+//                if (id == VERBOSE_ID) print_loops();
+//#endif
+
+//                errflag = loop2ph();
+//                if (errflag != 0)
+//                {
+//                    if (push_increment()) continue;
+//                    break;
+//                }
+
+//                nsplit = phs.n;
+//                if (nsplit > 1)
+//                {
+//                    create_surfmap(surfmap);
+//                    errflag = split_point(surfmap, xsplit, xsub);
+//                }
+//                if (errflag != 0)
+//                {
+//                    if (push_increment()) continue;
+//                    break;
+//                }
+
+//                // successful cut/split
+//                // set corners = OUTSIDE if corner pt is in list of edge points
+//                // else set corners = INSIDE
+
+//                int icorner;
+//                double[] p1,p2;
+
+//                corners[0] = corners[1] = corners[2] = corners[3] =
+//                  corners[4] = corners[5] = corners[6] = corners[7] = INSIDE;
+
+//                int nedge = edges.n;
+//                for (int iedge = 0; iedge < nedge; iedge++)
+//                {
+//                    if (!edges[iedge].active) continue;
+//                    p1 = edges[iedge].p1;
+//                    p2 = edges[iedge].p2;
+//                    icorner = corner(p1);
+//                    if (icorner >= 0) corners[icorner] = OUTSIDE;
+//                    icorner = corner(p2);
+//                    if (icorner >= 0) corners[icorner] = OUTSIDE;
+//                }
+
+//                // store volumes in vector so can return ptr to it
+
+//                vols.grow(nsplit);
+//                for (int i = 0; i < nsplit; i++) vols[i] = phs[i].volume;
+//                vols_caller = &vols[0];
+
+//                break;
+//            }
+
+//            // could not perform cut/split -> fatal error
+//            // print info about cell and final error message
+//            // 2-letter prefix is which method encountered error
+//            // NOTE: store errflag_original for no-push error to print this message?
+
+//            if (errflag!=0)
+//            {
+//                failed_cell();
+
+//                if (errflag == 1)
+//                    sparta.error.one("FE: Found edge in same direction");
+//                if (errflag == 2)
+//                    sparta.error.one("EF: Singlet BPG edge not on cell face");
+//                if (errflag == 3)
+//                    sparta.error.one("EF: BPG edge on more than 2 faces");
+//                if (errflag == 4)
+//                    sparta.error.one("LP: No positive volumes in cell");
+//                if (errflag == 5)
+//                    sparta.error.one("LP: More than one positive volume with a negative volume");
+//                if (errflag == 6)
+//                    sparta.error.one("LP: Single volume is negative, inverse donut");
+//                if (errflag == 7)
+//                    sparta.error.one("SP: Could not find split point in split cell");
+
+//                if (errflag == 11)
+//                    sparta.error.one("CH: Vertex has less than 3 edges");
+//                if (errflag == 12)
+//                    sparta.error.one("CH: Vertex contains invalid edge");
+//                if (errflag == 13)
+//                    sparta.error.one("CH: Vertex contains edge that doesn't point to it");
+//                if (errflag == 14)
+//                    sparta.error.one("CH: Vertex contains duplicate edge");
+//                if (errflag == 15)
+//                    sparta.error.one("CH: Vertex pointers to last edge are invalid");
+//                if (errflag == 16)
+//                    sparta.error.one("CH: Edge not part of 2 vertices");
+//                if (errflag == 17)
+//                    sparta.error.one("CH: Edge part of same vertex twice");
+//                if (errflag == 18)
+//                    sparta.error.one("CH: Edge part of invalid vertex");
+//                if (errflag == 19)
+//                    sparta.error.one("CH: Edge part of invalid vertex");
+
+//                if (errflag == 21)
+//                    sparta.error.one("WB: Point appears first in more than one CLINE");
+//                if (errflag == 22)
+//                    sparta.error.one("WB: Point appears last in more than one CLINE");
+//                if (errflag == 23)
+//                    sparta.error.one("WB: Singlet CLINES point not on cell border");
+//                if (errflag == 24)
+//                    sparta.error.one("LP: No positive areas in cell");
+//                if (errflag == 25)
+//                    sparta.error.one("LP: More than one positive area with a negative area");
+//                if (errflag == 26)
+//                    sparta.error.one("LP: Single area is negative, inverse donut");
+//            }
+
+//            if (pushflag!=0) npushcell[pushflag]++;
+
+//            return nsplit;
         }
         //public int clip_external(double[], double[], double[],
         //                  double[], double[], double[]);

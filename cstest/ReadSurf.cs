@@ -352,9 +352,9 @@ namespace cstest
                 
                 if (sparta.screen!=null)
                 {
-                    string str1 = string.Format("  {0} {0} xlo xhi\n", extent[0, 0], extent[0, 1]);
-                    string str2 = string.Format("  {0} {0} ylo yhi\n", extent[1, 0], extent[1, 1]);
-                    string str3 = string.Format("  {0} {0} zlo zhi\n", extent[2, 0], extent[2, 1]);
+                    string str1 = string.Format("  {0} {1} xlo xhi\n", extent[0, 0], extent[0, 1]);
+                    string str2 = string.Format("  {0} {1} ylo yhi\n", extent[1, 0], extent[1, 1]);
+                    string str3 = string.Format("  {0} {1} zlo zhi\n", extent[2, 0], extent[2, 1]);
                     if (dim == 2)
                     {
                         string str4 = string.Format("  {0} min line length\n", minlen);
@@ -469,7 +469,7 @@ namespace cstest
             // map surfs to grid cells then error check
             // check done on per-grid-cell basis, too expensive to do globally
 
-            sparta.grid.surf2grid(1);
+            sparta.grid.surf2grid(1,1);
 
             if (dim == 2) check_point_near_surf_2d();
             else check_point_near_surf_3d();
@@ -569,7 +569,7 @@ namespace cstest
                 {
                     string str1 = string.Format("  {0} deleted particles\n", ndeleted);
                     string str2 = string.Format("  CPU time = {0} secs\n", time_total);
-                    string str3 = string.Format("  read/sort/check/surf2grid/ghost/inout/particle percent = {0} {1} {2} {3} {4} {5}\n",
+                    string str3 = string.Format("  read/sort/check/surf2grid/ghost/inout/particle percent = \n{0:G6}   {1:G6}   {2:G6}   {3:G6}   {4:G6}   {5:G6}   {6:G6}\n",
                             100.0 * (time2 - time1) / time_total, 100.0 * (time3 - time2) / time_total,
                             100.0 * (time4 - time3) / time_total, 100.0 * (time5 - time4) / time_total,
                             100.0 * (time6 - time5) / time_total, 100.0 * (time7 - time6) / time_total,
@@ -943,8 +943,8 @@ namespace cstest
             int[,] p2e;
             count = new int[npoint_new];
             p2e = new int[npoint_new, 2];
-            //memory->create(count, npoint_new, "readsurf:count");
-            //memory->create(p2e, npoint_new, 2, "readsurf:count");
+            //memory.create(count, npoint_new, "readsurf:count");
+            //memory.create(p2e, npoint_new, 2, "readsurf:count");
             for (int i = 0; i < npoint_new; i++) count[i] = 0;
 
             int m = nline_old;
@@ -1039,10 +1039,75 @@ namespace cstest
                 if (me == 0) sparta.error.one(str);
             }
         }
-        //protected void check_point_near_surf_2d();
-        //protected void check_point_near_surf_3d();
+        protected void check_point_near_surf_2d()
+        {
+            int i, j, n, p1, p2;
+            int[] csurfs;
+            double side, epssq;
+            double[] lo,hi;
+            Surf.Line line;
 
-        //protected void point_line_compare(int, Surf.Line*, double, int &, int &);
+            Grid.ChildCell[] cells = sparta.grid.cells;
+            int nglocal = sparta.grid.nlocal;
+
+            int nerror = 0;
+            int nwarn = 0;
+
+            for (int icell = 0; icell < nglocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                n = cells[icell].nsurf;
+                if (n == 0) continue;
+
+                lo = cells[icell].lo;
+                hi = cells[icell].hi;
+                side = Math.Min(hi[0] - lo[0], hi[1] - lo[1]);
+                epssq = (EPSILON_GRID * side) * (EPSILON_GRID * side);
+
+                csurfs = cells[icell].csurfs;
+                for (i = 0; i < n; i++)
+                {
+                    line = lines[csurfs[i]];
+                    for (j = 0; j < n; j++)
+                    {
+                        if (i == j) continue;
+                        p1 = lines[csurfs[j]].p1;
+                        p2 = lines[csurfs[j]].p2;
+                        point_line_compare(p1, line, epssq,ref nerror, ref nwarn);
+                        point_line_compare(p2, line, epssq, ref nerror, ref nwarn);
+                    }
+                }
+            }
+
+            int all=0;
+            sparta.mpi.MPI_Allreduce(ref nerror, ref all, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            if (all!=0)
+            {
+                string str=string.Format("Surface check failed with %d points on lines", all);
+                sparta.error.all(str);
+            }
+
+            sparta.mpi.MPI_Allreduce(ref nwarn, ref all, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            if (all!=0)
+            {
+                string str = string.Format("Surface check found %d points nearly on lines", all);
+                if (me == 0) sparta.error.all( str);
+            }
+        }
+        protected void check_point_near_surf_3d()
+        {
+            Console.WriteLine("readsurf.check_point_near_surf_3d()"); 
+        }
+
+        protected void point_line_compare(int i, Surf.Line line, double epssq,
+                                  ref int nerror,ref int nwarn)
+        {
+            if (i == line.p1 || i == line.p2) return;
+            double rsq =
+              Geometry.distsq_point_line(pts[i].x, pts[line.p1].x, pts[line.p2].x);
+            if (rsq == 0.0) nerror++;
+            else if (rsq < epssq) nwarn++;
+        }
         //protected void point_tri_compare(int, Surf.Tri*, double, int &, int &, int, int, int);
 
         //protected int find_edge(int, int);

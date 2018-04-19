@@ -370,8 +370,39 @@ namespace cstest
 
             nparent++;
         }
-        //      public void add_split_cell(int);
-        //      public void add_sub_cell(int, int);
+        public void add_split_cell(int ownflag)
+        {
+            grow_sinfo(1);
+            if (ownflag!=0) nsplitlocal++;
+            else nsplitghost++;
+        }
+        public void add_sub_cell(int icell, int ownflag)
+        {
+            grow_cells(1, 1);
+
+            int inew;
+            if (ownflag!=0) inew = nlocal;
+            else inew = nlocal + nghost;
+
+            cells[inew] = cells[icell];
+            //memcpy(&cells[inew], &cells[icell], sizeof(ChildCell));
+            if (ownflag!=0)
+            {
+                cinfo[inew] = cinfo[icell];
+                //memcpy(&cinfo[inew], &cinfo[icell], sizeof(ChildInfo));
+            }
+
+            if (ownflag != 0)
+            {
+                nsublocal++;
+                nlocal++;
+            }
+            else
+            {
+                nsubghost++;
+                nghost++;
+            }
+        }
         public void remove_ghosts()
         {
             exist_ghost = 0;
@@ -830,7 +861,450 @@ namespace cstest
                 cells[icell].nmask = nmask;
             }
         }
-        //      public void set_inout();
+        public void set_inout()
+        {
+            int i, j, m, icell, jcell, pcell, itype, jtype, marktype;
+            int nflag, iface, icorner, ctype, ic;
+            int iset, nset, nsetnew;
+            int nsend, maxsend, nrecv, maxrecv;
+            int[] set,setnew,jcorner;
+            int[] cflags;
+            int[] proclist;
+            double[] xcorner=new double[3];
+            Connect[] sbuf,rbuf;
+
+            if (exist_ghost==0)
+                sparta.error.all("Cannot mark grid cells as inside/outside surfs because ghost cells do not exist");
+
+            int[] faceflip = { (int)Enum1.XHI, (int)Enum1.XLO, (int)Enum1.YHI, (int)Enum1.YLO, (int)Enum1.ZHI, (int)Enum1.ZLO };
+
+            int me = sparta.comm.me;
+            int dimension = sparta.domain.dimension;
+            int ncorner, nface, nface_pts;
+            if (dimension == 3)
+            {
+                ncorner = 8;
+                nface = 6;
+                nface_pts = 4;
+            }
+            else
+            {
+                ncorner = 4;
+                nface = 4;
+                nface_pts = 2;
+            }
+
+            // create irregular communicator for exchanging off-processor cell types
+
+            Irregular irregular = new Irregular(sparta);
+
+            // create set1 and set2 lists so can swap between them
+
+            int[] set1,set2;
+            set1 = new int[nlocal* nface];
+            set2 = new int[nlocal * nface];
+            //memory->create(set1, nlocal * nface, "grid:set1");
+            //memory->create(set2, nlocal * nface, "grid:set2");
+
+            // initial set list = overlapped cells with corner values which are set
+
+            nset = nsetnew = 0;
+            set = set1;
+            setnew = set2;
+
+            for (icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                if (cinfo[icell].type == (int)Enum4.OVERLAP && cinfo[icell].corner[0] != (int)Enum4.UNKNOWN)
+                    set[nset++] = icell;
+            }
+
+            // loop until no more cell types are set
+
+            maxsend = maxrecv = 0;
+            proclist = null;
+            sbuf = rbuf = null;
+
+            while (true)
+            {
+                nsend = 0;
+
+                // process local set list
+                // for unmarked neighbor cells I own, mark them and add to new set list
+                // for neighbor cells I would mark but don't own, add to comm list
+
+                while (nset!=0)
+                {
+                    nsetnew = 0;
+                    for (iset = 0; iset < nset; iset++)
+                    {
+                        icell = set[iset];
+                        itype = cinfo[icell].type;
+                        cflags = cinfo[icell].corner;
+
+                        // loop over my cell's faces
+
+                        for (iface = 0; iface < nface; iface++)
+                        {
+
+                            // if I am an OUTSIDE/INSIDE cell: marktype = my itype
+                            // if I am an OVERLAP cell: 
+                            //   can only mark neighbor if all corner pts on face are same
+                            //   marktype = value of those corner pts = OUTSIDE or INSIDE
+
+                            if (itype != (int)Enum4.OVERLAP) marktype = itype;
+                            else
+                            {
+                                ctype = cflags[corners[iface,0]];
+                                for (m = 1; m < nface_pts; m++)
+                                    if (cflags[corners[iface,m]] != ctype) break;
+                                if (m < nface_pts) continue;
+                                if (ctype == (int)Enum4.OUTSIDE) marktype = (int)Enum4.OUTSIDE;
+                                else if (ctype == (int)Enum4.INSIDE) marktype = (int)Enum4.INSIDE;
+                                else continue;
+                            }
+
+                            jcell = cells[icell].neigh[iface];
+                            nflag = neigh_decode(cells[icell].nmask, iface);
+
+                            if (nflag == (int)Enum5.NCHILD || nflag == (int)Enum5.NPBCHILD)
+                            {
+
+                                // this proc owns neighbor cell
+                                // perform this marking logic (here and below):
+                                // (1) if jtype = UNKNOWN:
+                                //     set jtype = marktype = OUTSIDE/INSIDE
+                                //     add jcell to new set
+                                // (2) else if jtype = OVERLAP:
+                                //     skip if jcell's corners are already marked
+                                //     set jcell corner pts = marktype = OUTSIDE/INSIDE
+                                //     also set its volume to full cell or zero
+                                //     do not add jcell to new set, since is OVERLAP cell
+                                //       maybe could add, but not sure need to, 
+                                //       and could be marked wrong ?
+                                // (3) else jcell = OUTSIDE/INSIDE:
+                                //     if jcell mark is different than marktype,
+                                //     error b/c markings are inconsistent
+
+                                if (cells[jcell].proc == me)
+                                {
+                                    jtype = cinfo[jcell].type;
+
+                                    if (jtype == (int)Enum4.UNKNOWN)
+                                    {
+                                        cinfo[jcell].type = marktype;
+                                        setnew[nsetnew++] = jcell;
+                                    }
+                                    else if (jtype == (int)Enum4.OVERLAP)
+                                    {
+                                        // don't think this restriction needed (Mar 2017)
+                                        //if (itype == OVERLAP) continue;
+                                        jcorner = cinfo[jcell].corner;
+                                        if (jcorner[0] != (int)Enum4.UNKNOWN) continue;
+                                        for (icorner = 0; icorner < ncorner; icorner++)
+                                            jcorner[icorner] = marktype;
+                                        if (marktype == (int)Enum4.INSIDE) cinfo[jcell].volume = 0.0;
+                                        else if (marktype == (int)Enum4.OUTSIDE)
+                                        {
+                                            double[] lo = cells[jcell].lo;
+                                            double[] hi = cells[jcell].hi;
+                                            if (dimension == 3)
+                                                cinfo[jcell].volume =
+                                                  (hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]);
+                                            else if (sparta.domain.axisymmetric!=0)
+                                                cinfo[jcell].volume =
+                                                  MyConst.MY_PI * (hi[1] * hi[1] - lo[1] * lo[1]) * (hi[0] - lo[0]);
+                                            else
+                                                cinfo[jcell].volume = (hi[0] - lo[0]) * (hi[1] - lo[1]);
+                                        }
+                                        // do not add to setnew, see comment above
+                                        //setnew[nsetnew++] = jcell;
+                                    }
+                                    else
+                                    {
+                                        if (jtype != marktype)
+                                        {
+                                            Console.WriteLine("ICELL1 {0} id {1} iface {2} jcell {3} id {4} marktype {5} jtype {6}\n",
+                                                   icell, cells[icell].id, iface, jcell, cells[jcell].id,
+                                                   marktype, jtype);
+                                            sparta.error.one("Cell type mis-match when marking on self");
+                                        }
+                                    }
+
+                                    // this proc does not own neighbor cell
+                                    // pack sbuf with info to send
+
+                                }
+                                else
+                                {
+                                    if (nsend == maxsend)
+                                    {
+                                        maxsend += DELTA;
+                                        //memory->grow(proclist, maxsend, "grid:proclist");
+                                        proclist = new int[maxsend];
+                                        sbuf = new Connect[maxsend];
+                                          //memory->srealloc(sbuf, maxsend * sizeof(Connect), "grid:sbuf");
+                                    }
+                                    proclist[nsend] = cells[jcell].proc;
+                                    Connect cbuf = sbuf[nsend];
+                                    cbuf.itype = itype;
+                                    cbuf.marktype = marktype;
+                                    cbuf.jcell = cells[jcell].ilocal;
+                                    sbuf[nsend] = cbuf;
+                                    nsend++;
+                                }
+
+                            }
+                            else if (nflag == (int)Enum5.NPARENT || nflag == (int)Enum5.NPBPARENT)
+                            {
+
+                                // neighbor is a parent cell, not a child cell
+                                // for each corner points of icell face:
+                                //   find jcell = child cell owner of the face corner pt
+                                //   if I own the child cell, mark it in same manner as above
+
+                                pcell = jcell;
+                                for (m = 0; m < nface_pts; m++)
+                                {
+                                    ic = corners[iface,m];
+                                    if (ic % 2!=0) xcorner[0] = cells[icell].hi[0];
+                                    else xcorner[0] = cells[icell].lo[0];
+                                    if ((ic / 2) % 2 != 0) xcorner[1] = cells[icell].hi[1];
+                                    else xcorner[1] = cells[icell].lo[1];
+                                    if (ic / 4 != 0) xcorner[2] = cells[icell].hi[2];
+                                    else xcorner[2] = cells[icell].lo[2];
+
+                                    if (nflag == (int)Enum5.NPBPARENT)
+                                        sparta.domain.uncollide(faceflip[iface], xcorner);
+
+                                    jcell = id_find_child(pcell, xcorner);
+                                    if (jcell < 0) sparta.error.one("Parent cell child missing");
+
+                                    // this proc owns neighbor cell
+                                    // perform same marking logic as above
+
+                                    if (cells[jcell].proc == me)
+                                    {
+                                        jtype = cinfo[jcell].type;
+
+                                        if (jtype == (int)Enum4.UNKNOWN)
+                                        {
+                                            cinfo[jcell].type = marktype;
+                                            setnew[nsetnew++] = jcell;
+                                        }
+                                        else if (jtype == (int)Enum4.OVERLAP)
+                                        {
+                                            // don't think this restriction needed (Mar 2017)
+                                            //if (itype == OVERLAP) continue;
+                                            jcorner = cinfo[jcell].corner;
+                                            if (jcorner[0] != (int)Enum4.UNKNOWN) continue;
+                                            for (icorner = 0; icorner < ncorner; icorner++)
+                                                jcorner[icorner] = marktype;
+                                            if (marktype == (int)Enum4.INSIDE) cinfo[jcell].volume = 0.0;
+                                            else if (marktype == (int)Enum4.OUTSIDE)
+                                            {
+                                                double[] lo = cells[jcell].lo;
+                                                double[] hi = cells[jcell].hi;
+                                                if (dimension == 3)
+                                                    cinfo[jcell].volume =
+                                                      (hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]);
+                                                else if (sparta.domain.axisymmetric!=0)
+                                                    cinfo[jcell].volume =
+                                                      MyConst.MY_PI * (hi[1] * hi[1] - lo[1] * lo[1]) * (hi[0] - lo[0]);
+                                                else
+                                                    cinfo[jcell].volume = (hi[0] - lo[0]) * (hi[1] - lo[1]);
+                                            }
+                                            // do not add to setnew, see comment above
+                                            //setnew[nsetnew++] = jcell;
+                                        }
+                                        else
+                                        {
+                                            if (jtype != marktype)
+                                            {
+                                                Console.WriteLine("ICELL2 {0} id {1} iface {2} jcell {3} id {4} marktype {5} jtype {6}\n",
+                                                       icell, cells[icell].id, iface, jcell, cells[jcell].id,
+                                                       marktype, jtype);
+                                                sparta.error.one(
+                                                           "Cell type mis-match when marking on self");
+                                            }
+                                        }
+
+                                        // this proc does not own neighbor cell
+                                        // pack sbuf with info to send
+
+                                    }
+                                    else
+                                    {
+                                        if (nsend == maxsend)
+                                        {
+                                            maxsend += DELTA;
+                                            proclist = new int[maxsend];
+                                            //memory->grow(proclist, maxsend, "grid:proclist");
+                                            sbuf = new Connect[maxsend];
+                                              //memory->srealloc(sbuf, maxsend * sizeof(Connect), "grid:sbuf");
+                                        }
+                                        proclist[nsend] = cells[jcell].proc;
+                                        sbuf[nsend].itype = itype;
+                                        sbuf[nsend].marktype = marktype;
+                                        sbuf[nsend].jcell = cells[jcell].ilocal;
+                                        nsend++;
+                                    }
+                                }
+                            }
+                            else continue;
+                        }
+                    }
+
+                    // swap set lists
+
+                    nset = nsetnew;
+                    if (set == set1)
+                    {
+                        set = set2;
+                        setnew = set1;
+                    }
+                    else
+                    {
+                        set = set1;
+                        setnew = set2;
+                    }
+                }
+
+                // if no proc has info to communicate, then done iterating
+
+                int anysend=0;
+                sparta.mpi.MPI_Allreduce(ref nsend, ref anysend, 1, MPI.MPI_INT, MPI.MPI_MAX, sparta.world);
+                if (anysend==0) break;
+
+                // perform irregular comm of each proc's comm list
+                // realloc rbuf as needed
+
+                nrecv = irregular.create_data_uniform(nsend, proclist, sparta.comm.commsortflag);
+                if (nrecv > maxrecv)
+                {
+                    //memory->sfree(rbuf);
+                    maxrecv = nrecv;
+                    rbuf = new Connect[maxrecv];
+                    //rbuf = (Connect*)memory->smalloc(maxrecv * sizeof(Connect), "grid:rbuf");
+                }
+
+                irregular.exchange_uniform(sbuf.ToString(), 3*sizeof(int), rbuf.ToString());
+
+                // this proc received info to mark neighbor cell it owns
+                // perform same marking logic as above
+
+                for (i = 0; i < nrecv; i++)
+                {
+                    itype = rbuf[i].itype;
+                    marktype = rbuf[i].marktype;
+                    jcell = rbuf[i].jcell;
+                    jtype = cinfo[jcell].type;
+
+                    if (jtype == (int)Enum4.UNKNOWN)
+                    {
+                        cinfo[jcell].type = marktype;
+                        set[nset++] = jcell;
+                    }
+                    else if (jtype == (int)Enum4.OVERLAP)
+                    {
+                        // don't think this restriction needed (Mar 2017)
+                        //if (itype == OVERLAP) continue;
+                        jcorner = cinfo[jcell].corner;
+                        if (jcorner[0] != (int)Enum4.UNKNOWN) continue;
+                        for (icorner = 0; icorner < ncorner; icorner++)
+                            jcorner[icorner] = marktype;
+                        if (marktype == (int)Enum4.INSIDE) cinfo[jcell].volume = 0.0;
+                        else if (marktype == (int)Enum4.OUTSIDE)
+                        {
+                            double[] lo = cells[jcell].lo;
+                            double[] hi = cells[jcell].hi;
+                            if (dimension == 3)
+                                cinfo[jcell].volume =
+                                  (hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]);
+                            else if (sparta.domain.axisymmetric!=0)
+                                cinfo[jcell].volume =
+                                  MyConst.MY_PI * (hi[1] * hi[1] - lo[1] * lo[1]) * (hi[0] - lo[0]);
+                            else
+                                cinfo[jcell].volume = (hi[0] - lo[0]) * (hi[1] - lo[1]);
+                        }
+                        // do not add to setnew, see comment above
+                        //set[nset++] = jcell;
+                    }
+                    else
+                    {
+                        if (marktype != jtype)
+                        {
+                            Console.WriteLine("JCELL3 {0} id {1} marktype {2} jtype {3}\n",
+                                   jcell, cells[jcell].id, marktype, jtype);
+                            sparta.error.one("Cell type mis-match when marking on neigh proc");
+                        }
+                    }
+                }
+            }
+
+            // NOTE: at this point could make a final attempt to mark
+            //   any remaining UNKNOWN corner pts of an overlap cell
+            //   to avoid warnings and errors in type_check()
+            // when doing grid adaptation, a new cell could possibly still be unmarked,
+            //   because its already marked neighbors which are non-OVERLAP cells
+            //     will not try to mark it
+            //   this is in contrast to first-time marking, when sweep entire grid
+            // the final attempt logic could do this:
+            //   instead of having marked cells mark their unmarked neighbors
+            //   have unmarked cells look at their neighbors to acquire markings
+            //   not necessary when doing initial full-grid sweep,
+            //     but may be necessary when doing incremental adaptation
+
+            // all done with marking
+            // set type and cflags for all sub cells from split cell it belongs to
+
+            int splitcell;
+
+            for (icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit > 0) continue;
+                splitcell = sinfo[cells[icell].isplit].icell;
+                cinfo[icell].type = cinfo[splitcell].type;
+                for (j = 0; j < ncorner; j++)
+                    cinfo[icell].corner[j] = cinfo[splitcell].corner[j];
+            }
+
+            // set volume of cells that are now INSIDE to 0.0
+            // this allows error check in Collide and FixGridCheck for particles
+            //   in zero-volume cells
+
+            for (icell = 0; icell < nlocal; icell++)
+                if (cinfo[icell].type == (int)Enum4.INSIDE) cinfo[icell].volume = 0.0;
+
+            /*
+            printf("POST INOUT {}: {}\n",sparta.comm.me,grid->nlocal);
+            for (int i = 0; i < grid->nlocal; i++) {
+              Grid::ChildCell *g = &grid->cells[i];
+              if (g->id == 52)
+              printf("ICELL {}: {} id {} pid {} lo %g %g "
+                     "hi %g %g type {} corners {} {} {} {} vol %g\n",
+                     sparta.comm.me,i,g->id,pcells[g->iparent].id,
+                     g->lo[0],
+                     g->lo[1],
+                     g->hi[0],
+                     g->hi[1],
+                     grid->cinfo[i].type,
+                     grid->cinfo[i].corner[0],
+                     grid->cinfo[i].corner[1],
+                     grid->cinfo[i].corner[2],
+                     grid->cinfo[i].corner[3],grid->cinfo[i].volume);
+            }
+            */
+
+            // clean up
+
+            //delete irregular;
+            //memory->destroy(set1);
+            //memory->destroy(set2);
+            //memory->destroy(proclist);
+            //memory->sfree(sbuf);
+            //memory->sfree(rbuf);
+        }
         public void check_uniform()
         {
             // maxlevel = max level of any child cell in grid
@@ -875,7 +1349,10 @@ namespace cstest
                 }
             }
         }
-        //      public void type_check(int flag = 1);
+        public void type_check(int flag = 1)
+        {
+            Console.WriteLine("grid.type_check");
+        }
 
 
 
@@ -960,9 +1437,9 @@ namespace cstest
 
         protected struct Connect
         {
-            int itype;           // type of sending cell
-            int marktype;        // new type value (IN/OUT) for neighbor cell
-            int jcell;           // index of neighbor cell on receiving proc (owner)
+            public int itype;           // type of sending cell
+            public int marktype;        // new type value (IN/OUT) for neighbor cell
+            public int jcell;           // index of neighbor cell on receiving proc (owner)
         };
 
         // bounding box for a clump of grid cells
@@ -1335,9 +1812,19 @@ namespace cstest
                 //memset(&cinfo[oldmax], 0, (maxlocal - oldmax) * sizeof(ChildInfo));
             }
         }
-        //virtual void grow_sinfo(int);
+        protected virtual void grow_sinfo(int n)
+        {
+            if (nsplitlocal + nsplitghost + n >= maxsplit)
+            {
+                int oldmax = maxsplit;
+                while (maxsplit < nsplitlocal + nsplitghost + n) maxsplit += DELTA;
+                sinfo = new SplitInfo[maxsplit];
+                  //memory->srealloc(sinfo, maxsplit * sizeof(SplitInfo), "grid:sinfo");
+                //memset(&sinfo[oldmax], 0, (maxsplit - oldmax) * sizeof(SplitInfo));
+            }
+        }
 
-       
+
         //void flow_stats();
         //double flow_volume();
 

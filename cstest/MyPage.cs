@@ -152,7 +152,8 @@ namespace cstest
         {
             ndatum = nchunk = 0;
             index = ipage = 0;
-            page = pages[ipage];
+            page = null;
+            //page = pages[ipage];
         }
 
         // return total size of all allocated pages

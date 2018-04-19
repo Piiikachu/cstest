@@ -21,7 +21,7 @@ namespace cstest
         public int surf_collision_check; // flag for whether init() check is required
                                     // for assign of collision models to surfs
           
-        public double[] bblo, bbhi=new double[3];   // bounding box around surfs
+        public double[] bblo=new double[3], bbhi=new double[3];   // bounding box around surfs
         public int tally_comm;           // style of comm for surf tallies
           
         public int nreact_one;           // surface reactions in current step
@@ -299,9 +299,11 @@ namespace cstest
                 MathExtra.sub3(pts[p2].x, pts[p1].x, delta);
                 MathExtra.cross3(z, delta, norm);
                 MathExtra.norm3(norm);
-                lines[m].norm[0] = norm[0];
-                lines[m].norm[1] = norm[1];
-                lines[m].norm[2] = 0.0;
+                norm[2] = 0.0;
+                Line line = lines[m];
+                line.norm= norm;
+                lines[m] = line;
+                        
                 m++;
             }
         }

@@ -162,7 +162,30 @@ namespace cstest
         //public void boundary_modify(int, char**);
         //public virtual int collide(Particle::OnePart*&, int, int, double*, double &,
         //             Particle::OnePart*&);
-        //public virtual void uncollide(int, double*);
+        public virtual void uncollide(int face, double[] x)
+        {
+            switch ((Enum1)face)
+            {
+                case Enum1.XLO:
+                    x[0] = boxlo[0];
+                    break;
+                case Enum1.XHI:
+                    x[0] = boxhi[0];
+                    break;
+                case Enum1.YLO:
+                    x[1] = boxlo[1];
+                    break;
+                case Enum1.YHI:
+                    x[1] = boxhi[1];
+                    break;
+                case Enum1.ZLO:
+                    x[2] = boxlo[2];
+                    break;
+                case Enum1.ZHI:
+                    x[2] = boxhi[2];
+                    break;
+            }
+        }
         //public void add_region(int, char**);
         //public void delete_region(int, char**);
         public int find_region(string name)

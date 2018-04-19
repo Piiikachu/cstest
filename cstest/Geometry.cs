@@ -1077,7 +1077,7 @@ namespace cstest
            distance = nearest distance to any point on line segment
         ------------------------------------------------------------------------- */
 
-        double distsq_point_line(double[] x, double[] p1, double[] p2)
+        public static double distsq_point_line(double[] x, double[] p1, double[] p2)
         {
             // A = vector from P1 to X
             // B = vector from P1 to P2
