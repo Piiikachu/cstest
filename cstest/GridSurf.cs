@@ -91,8 +91,9 @@ namespace cstest
                 }
                 else
                 {
+                    vols = new double[3];
                     nsplitone = cut2d.split(c.id, c.lo, c.hi, c.nsurf, c.csurfs,
-                                             out vols, surfmap, cinfo[icell].corner,out xsub, xsplit);
+                                             ref vols, surfmap, cinfo[icell].corner,ref xsub, xsplit);
                 }
 
                 cells[icell] = c;

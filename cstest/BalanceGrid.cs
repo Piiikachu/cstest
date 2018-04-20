@@ -348,7 +348,7 @@ namespace cstest
             {
                 string str1 = string.Format("Balance grid migrated {0} cells\n", nmigrate_all);
                 string str2 = string.Format("  CPU time = {0:G} secs\n", time_total);
-                string str3 = string.Format("  reassign/sort/migrate/ghost percent = {0} {1} {2} {3}\n",
+                string str3 = string.Format("  reassign/sort/migrate/ghost percent = {0:G6} {1:G6} {2:G6} {3:G6}\n",
                             100.0 * (time2 - time1) / time_total, 100.0 * (time3 - time2) / time_total,
                             100.0 * (time4 - time3) / time_total, 100.0 * (time5 - time4) / time_total);
 

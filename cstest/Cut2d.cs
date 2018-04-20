@@ -138,15 +138,14 @@ namespace cstest
         //public int surf2grid_list(cellint, double[], double[], int, int[], int[], int);
         public int split(int id_caller, double[] lo_caller, double[] hi_caller,
                  int nsurf_caller, int[] surfs_caller,
-                 out double[] areas_caller, int[] surfmap,
-                 int[] corners,out int xsub, double[] xsplit)
+                 ref double[] areas_caller, int[] surfmap,
+                 int[] corners,ref int xsub, double[] xsplit)
         {
             id = id_caller;
             lo = lo_caller;
             hi = hi_caller;
             nsurf = nsurf_caller;
             surfs = surfs_caller;
-
             // perform cut/split
             // first attempt is with no pushing of surface points
             // if fails, then try again with push options
@@ -155,7 +154,7 @@ namespace cstest
             int nsplit=0, errflag;
             pushflag = 0;
 
-            while (true)
+            while(true)
             {
                 int grazeflag = build_clines();
 
@@ -166,25 +165,26 @@ namespace cstest
 
                 if (clines.Count == 0)
                 {
-                    if (pushflag!=0) npushcell[pushflag]++;
+                    if (pushflag != 0) npushcell[pushflag]++;
 
-                    int mark =(int)Enum1.UNKNOWN;
-                    if (grazeflag!=0 || inout == (int)Enum1.INSIDE) mark = (int)Enum1.INSIDE;
+                    int mark = (int)Enum1.UNKNOWN;
+                    if (grazeflag != 0 || inout == (int)Enum1.INSIDE) mark = (int)Enum1.INSIDE;
                     else if (inout == (int)Enum1.OUTSIDE) mark = (int)Enum1.OUTSIDE;
                     corners[0] = corners[1] = corners[2] = corners[3] = mark;
 
                     double area = 0.0;
                     if (mark == (int)Enum1.OUTSIDE)
                     {
-                        if (axisymmetric!=0)
-                            area =MyConst.MY_PI * (hi[1] * hi[1] - lo[1] * lo[1]) * (hi[0] - lo[0]);
+                        if (axisymmetric != 0)
+                            area = MyConst.MY_PI * (hi[1] * hi[1] - lo[1] * lo[1]) * (hi[0] - lo[0]);
                         else area = (hi[0] - lo[0]) * (hi[1] - lo[1]);
                     }
 
-                    areas=new List<double>(1);
-                    areas[0] = area;
+                    areas = new List<double>(1);
+                    areas.Add(area);
                     areas_caller = areas.ToArray();
                     xsub = 0;
+                    
                     return 1;
                 }
 
@@ -192,9 +192,9 @@ namespace cstest
                 // value of errflag corresponds to unique error message (listed below)
 
                 errflag = weiler_build();
-                if (errflag!=0)
+                if (errflag != 0)
                 {
-                    if (push_increment()!=0) continue;
+                    if (push_increment() != 0) continue;
                     break;
                 }
 
@@ -211,7 +211,7 @@ namespace cstest
                 {
                     create_surfmap(surfmap);
                     xsub = 0;
-                    errflag = split_point(surfmap, xsplit,ref xsub);
+                    errflag = split_point(surfmap, xsplit, ref xsub);
                 }
                 if (errflag != 0)
                 {
@@ -248,8 +248,8 @@ namespace cstest
 
                 // store areas in vector so can return ptr to it
 
-                areas=new List<double>(nsplit);
-                for (int i = 0; i < nsplit; i++) areas[i] = pgs[i].area;
+                areas = new List<double>(nsplit);
+                for (int i = 0; i < nsplit; i++) areas.Add(pgs[i].area);
                 areas_caller = areas.ToArray();
 
                 break;
@@ -281,8 +281,8 @@ namespace cstest
             }
 
             if (pushflag != 0) npushcell[pushflag]++;
-            areas_caller = null;
-            xsub = 0;
+
+            
             return nsplit;
 
         }
@@ -464,7 +464,15 @@ namespace cstest
 
                 else
                 {
-                    Point point = new Point();
+                    Point point;
+                    if (npt>=points.Count)
+                    {
+                        point = new Point();
+                    }
+                    else
+                    {
+                        point = points[npt];
+                    }
                     point.x = new double[2];
                     point.x[0] = pt[0];
                     point.x[1] = pt[1];
@@ -498,7 +506,15 @@ namespace cstest
 
                 else
                 {
-                    Point point = new Point();
+                    Point point;
+                    if (npt >= points.Count)
+                    {
+                        point = new Point();
+                    }
+                    else
+                    {
+                        point = points[npt];
+                    }
                     point.x = new double[2];
                     point.x[0] = pt[0];
                     point.x[1] = pt[1];
@@ -541,7 +557,15 @@ namespace cstest
                 if (cpt[0] == points[j].x[0] && cpt[1] == points[j].x[1]) break;
             if (j == npt || points[j].type ==(int)Enum3.TWO)
             {
-                Point point =new Point();
+                Point point;
+                if (npt >= points.Count)
+                {
+                    point = new Point();
+                }
+                else
+                {
+                    point = points[npt];
+                }
                 point.x = new double[2];
                 point.x[0] = cpt[0];
                 point.x[1] = cpt[1];
@@ -561,7 +585,15 @@ namespace cstest
                 if (cpt[0] == points[j].x[0] && cpt[1] == points[j].x[1]) break;
             if (j == npt || points[j].type == (int)Enum3.TWO)
             {
-                Point point=new Point();
+                Point point;
+                if (npt >= points.Count)
+                {
+                    point = new Point();
+                }
+                else
+                {
+                    point = points[npt];
+                }
                 point.x = new double[2];
                 point.x[0] = cpt[0];
                 point.x[1] = cpt[1];
@@ -581,7 +613,15 @@ namespace cstest
                 if (cpt[0] == points[j].x[0] && cpt[1] == points[j].x[1]) break;
             if (j == npt || points[j].type == (int)Enum3.TWO)
             {
-                Point point = new Point();
+                Point point;
+                if (npt >= points.Count)
+                {
+                    point = new Point();
+                }
+                else
+                {
+                    point = points[npt];
+                }
                 point.x = new double[2];
                 point.x[0] = cpt[0];
                 point.x[1] = cpt[1];
@@ -602,7 +642,15 @@ namespace cstest
                 if (cpt[0] == points[j].x[0] && cpt[1] == points[j].x[1]) break;
             if (j == npt || points[j].type == (int)Enum3.TWO)
             {
-                Point point = new Point();
+                Point point;
+                if (npt >= points.Count)
+                {
+                    point = new Point();
+                }
+                else
+                {
+                    point = points[npt];
+                }
                 point.x = new double[2];
                 point.x[0] = cpt[0];
                 point.x[1] = cpt[1];
@@ -631,8 +679,8 @@ namespace cstest
             p2.cnext = ipt3;
             p3.cprev = ipt2;
             p3.cnext = ipt4;
-            p3.cprev = ipt3;
-            p3.cnext = -1;
+            p4.cprev = ipt3;
+            p4.cnext = -1;
 
             points[ipt1] = p1;
             points[ipt2] = p2;
@@ -780,7 +828,7 @@ namespace cstest
                 if (ipt != firstpt) continue;
 
                 loops=new List<Loop>(nloop + 1);
-                Loop loop = loops[nloop];
+                Loop loop = new Loop(); 
                 loop.area = area;
                 loop.active = 1;
                 if (iflag!=0) loop.flag = (int)Enum2.INTERIOR;
@@ -788,7 +836,7 @@ namespace cstest
                 else loop.flag = (int)Enum2.INTBORD;
                 loop.n = ncount;
                 loop.first = firstpt;
-                loops[nloop] = loop;
+                loops.Add( loop);
 
                 nloop++;
             }
@@ -853,11 +901,11 @@ namespace cstest
                 loops[prev] = aloop;
 
                 if (area < 0.0) return 6;
-                PG pg = pgs[0];
+                PG pg=new PG();
                 pg.area = area;
                 pg.n = count;
                 pg.first = first;
-                pgs[0] = pg;
+                pgs.Add( pg);
 
             }
             else

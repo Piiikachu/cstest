@@ -352,9 +352,9 @@ namespace cstest
                 
                 if (sparta.screen!=null)
                 {
-                    string str1 = string.Format("  {0} {1} xlo xhi\n", extent[0, 0], extent[0, 1]);
-                    string str2 = string.Format("  {0} {1} ylo yhi\n", extent[1, 0], extent[1, 1]);
-                    string str3 = string.Format("  {0} {1} zlo zhi\n", extent[2, 0], extent[2, 1]);
+                    string str1 = string.Format("  {0:G6} {1:G6} xlo xhi\n", extent[0, 0], extent[0, 1]);
+                    string str2 = string.Format("  {0:G6} {1:G6} ylo yhi\n", extent[1, 0], extent[1, 1]);
+                    string str3 = string.Format("  {0:G6} {1:G6} zlo zhi\n", extent[2, 0], extent[2, 1]);
                     if (dim == 2)
                     {
                         string str4 = string.Format("  {0} min line length\n", minlen);
@@ -371,12 +371,12 @@ namespace cstest
                 }
                 if (sparta.logfile != null)
                 {
-                    string str1 = string.Format("  {0} {1} xlo xhi\n", extent[0, 0], extent[0, 1]);
-                    string str2 = string.Format("  {0} {1} ylo yhi\n", extent[1, 0], extent[1, 1]);
-                    string str3 = string.Format("  {0} {1} zlo zhi\n", extent[2, 0], extent[2, 1]);
+                    string str1 = string.Format("  {0:G6} {1:G6} xlo xhi\n", extent[0, 0], extent[0, 1]);
+                    string str2 = string.Format("  {0:G6} {1:G6} ylo yhi\n", extent[1, 0], extent[1, 1]);
+                    string str3 = string.Format("  {0:G6} {1:G6} zlo zhi\n", extent[2, 0], extent[2, 1]);
                     if (dim == 2)
                     {
-                        string str4 = string.Format("  {0} min line length\n", minlen);
+                        string str4 = string.Format("  {0:G6} min line length\n", minlen);
                         new StreamWriter(sparta.logfile).WriteLine(str1 + str2 + str3 + str4);
                     }
                     if (dim == 3)
