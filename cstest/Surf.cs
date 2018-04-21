@@ -302,7 +302,7 @@ namespace cstest
                 norm[2] = 0.0;
                 Line line = lines[m];
                 line.norm= norm;
-                lines[m] = line;
+                lines[m] = line; 
                         
                 m++;
             }

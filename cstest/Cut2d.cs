@@ -320,7 +320,7 @@ namespace cstest
             clines = new List<Cline>(nsurf);
 
 
-            int grazeflag = 0;
+           int grazeflag = 0;
             int noutside = 0;
             int ninside = 0;
             int n = 0;
@@ -351,8 +351,9 @@ namespace cstest
                 x = cline.x;
                 y = cline.y;
                 
-                clip(p1, p2, x, y);
 
+                clip(p1, p2, x, y);
+                clines.Add(cline);
                 // discard clipped line if only one point
                 // if all lines are removed, clines will be empty,
                 //   which will result in cell corner pts being left UNKNOWN in split()
@@ -376,7 +377,6 @@ namespace cstest
                     double dot = MathExtra.dot3(line.norm, l2b);
                     if (dot > 0.0) noutside++;
                     if (dot < 0.0) ninside++;
-                    clines.Add(cline);
                     continue;
                 }
 
@@ -398,7 +398,6 @@ namespace cstest
                         grazeflag--;
                     }
                 }
-                clines.Add(cline);
                 n++;
             }
 
@@ -1144,7 +1143,7 @@ namespace cstest
         {
             if (pushflag == npushmax) return 0;
             pushlo = pushlo_vec[pushflag];
-            pushhi = pushhi_vec[pushflag]; ;
+            pushhi = pushhi_vec[pushflag]; 
             pushvalue = pushvalue_vec[pushflag];
             pushflag++;
             return 1;
