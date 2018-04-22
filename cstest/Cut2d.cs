@@ -320,7 +320,7 @@ namespace cstest
             clines = new List<Cline>(nsurf);
 
 
-           int grazeflag = 0;
+            int grazeflag = 0;
             int noutside = 0;
             int ninside = 0;
             int n = 0;
@@ -353,7 +353,7 @@ namespace cstest
                 
 
                 clip(p1, p2, x, y);
-                clines.Add(cline);
+                
                 // discard clipped line if only one point
                 // if all lines are removed, clines will be empty,
                 //   which will result in cell corner pts being left UNKNOWN in split()
@@ -398,6 +398,7 @@ namespace cstest
                         grazeflag--;
                     }
                 }
+                clines.Add(cline);
                 n++;
             }
 
@@ -415,7 +416,6 @@ namespace cstest
                 //if (ninside > noutside) inout = INSIDE;
                 //else if (noutside > ninside) inout = OUTSIDE;
             }
-
             return grazeflag;
         }
         private int weiler_build()
@@ -662,7 +662,7 @@ namespace cstest
             apoint.corner = 2;
             apoint.side = 3;
             apoint.value = hi[1];
-            points[ipt3]=apoint;
+            points[ipt4]=apoint;
 
             // n = final # of points
 
