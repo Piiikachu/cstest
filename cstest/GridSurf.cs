@@ -250,6 +250,138 @@ namespace cstest
 
         }
         //      public void surf2grid_one(int, int, int, int, class Cut3d *, class Cut2d *);
+        void flow_stats()
+        {
+            int i;
+
+            int outside = 0;
+            int inside = 0;
+            int overlap = 0;
+            int maxsplitone = 0;
+            double cellvolume = 0.0;
+
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                if (cinfo[icell].type == (int)Enum4.OUTSIDE) outside++;
+                else if (cinfo[icell].type == (int)Enum4.INSIDE) inside++;
+                else if (cinfo[icell].type == (int)Enum4.OVERLAP) overlap++;
+                maxsplitone = Math.Max(maxsplitone, cells[icell].nsplit);
+            }
+
+            // sum volume for unsplit and sub cells
+            // skip split cells and INSIDE cells
+
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit > 1) continue;
+                if (cinfo[icell].type != (int)Enum4.INSIDE) cellvolume += cinfo[icell].volume;
+            }
+
+            int outall =0,inall = 0 ,overall = 0, maxsplitall =0;
+            double cellvolumeall=0;
+            sparta.mpi.MPI_Allreduce(ref outside, ref outall, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            sparta.mpi.MPI_Allreduce(ref inside, ref inall, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            sparta.mpi.MPI_Allreduce(ref overlap, ref overall, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            sparta.mpi.MPI_Allreduce(ref maxsplitone, ref maxsplitall, 1, MPI.MPI_INT, MPI.MPI_MAX, sparta.world);
+            sparta.mpi.MPI_Allreduce(ref cellvolume, ref cellvolumeall, 1, MPI.MPI_DOUBLE, MPI.MPI_SUM, sparta.world);
+
+            double flowvolume = flow_volume();
+
+            int[] tally = new int[maxsplitall];
+            int[] tallyall = new int[maxsplitall];
+            for (i = 0; i < maxsplitall; i++) tally[i] = 0;
+
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                if (cinfo[icell].type == (int)Enum4.OVERLAP) tally[cells[icell].nsplit - 1]++;
+            }
+
+            //sparta.mpi.MPI_Allreduce(ref tally,ref tallyall, maxsplitall, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+
+            if (sparta.comm.me == 0)
+            {
+                string str1 = string.Format("  {0} {1} {2} = cells outside/inside/overlapping surfs\n",
+                        outall, inall, overall);
+                string str2 = " ";
+
+                for (i = 0; i < maxsplitall; i++)
+                    str2 += string.Format(" {0}", tally[i]);
+                string str3 = string.Format(" = surf cells with 1,2,etc splits\n");
+                string str4 = string.Format("  {0:G} {1:G} = cell-wise and global flow volume\n",
+                            cellvolumeall, flowvolume);
+                Console.WriteLine(str1 + str2 + str3 + str4);
+                if (sparta.screen!=null)
+                {
+                    new StreamWriter(sparta.screen).Write(str1+str2+str3+str4);
+                    
+                }
+                if (sparta.logfile!=null)
+                {
+                    new StreamWriter(sparta.logfile).Write(str1 + str2 + str3 + str4);
+                }
+            }
+
+
+        }
+        double flow_volume()
+        {
+            double zarea;
+            double[] p1,p2,p3;
+
+            List<Surf.Point> pts = sparta.surf.pts;
+            List<Surf.Line> lines = sparta.surf.lines;
+            List<Surf.Tri> tris = sparta.surf.tris;
+            double[] boxlo = sparta.domain.boxlo;
+            double[] boxhi = sparta.domain.boxhi;
+
+            double volume = 0.0;
+
+            if (sparta.domain.dimension == 3)
+            {
+                for (int i = 0; i < sparta.surf.ntri; i++)
+                {
+                    p1 = pts[tris[i].p1].x;
+                    p2 = pts[tris[i].p2].x;
+                    p3 = pts[tris[i].p3].x;
+                    zarea = 0.5 * ((p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0]));
+                    volume -= zarea * ((p1[2] + p2[2] + p3[2]) / 3.0 - boxlo[2]);
+                }
+                if (volume <= 0.0)
+                    volume += (boxhi[0] - boxlo[0]) * (boxhi[1] - boxlo[1]) *
+                      (boxhi[2] - boxlo[2]);
+
+                // axisymmetric "volume" of line segment = volume of truncated cone
+                // PI/3 (y1^2 + y1y2 + y2^2) (x2-x1)
+
+            }
+            else if (sparta.domain.axisymmetric!=0)
+            {
+                for (int i = 0; i < sparta.surf.nline; i++)
+                {
+                    p1 = pts[lines[i].p1].x;
+                    p2 = pts[lines[i].p2].x;
+                    volume -=
+                      MyConst.MY_PI3 * (p1[1] * p1[1] + p1[1] * p2[1] + p2[1] * p2[1]) * (p2[0] - p1[0]);
+                }
+                if (volume <= 0.0)
+                    volume += MyConst.MY_PI * boxhi[1] * boxhi[1] * (boxhi[0] - boxlo[0]);
+
+            }
+            else
+            {
+                for (int i = 0; i < sparta.surf.nline; i++)
+                {
+                    p1 = pts[lines[i].p1].x;
+                    p2 = pts[lines[i].p2].x;
+                    volume -= (0.5 * (p1[1] + p2[1]) - boxlo[1]) * (p2[0] - p1[0]);
+                }
+                if (volume <= 0.0) volume += (boxhi[0] - boxlo[0]) * (boxhi[1] - boxlo[1]);
+            }
+
+            return volume;
+        }
         public void clear_surf()
         {
             int dimension = sparta.domain.dimension;

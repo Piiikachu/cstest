@@ -1354,7 +1354,106 @@ namespace cstest
         }
         public void type_check(int flag = 1)
         {
-            Console.WriteLine("grid.type_check");
+            int i;
+
+            // check cell types
+
+            int unknown = 0;
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                if (cinfo[icell].type == (int)Enum4.UNKNOWN) unknown++;
+            }
+            int unknownall=0;
+            sparta.mpi.MPI_Allreduce(ref unknown, ref unknownall, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+
+            if (unknownall!=0)
+            {
+                string str=string.Format("Grid cells marked as unknown = {0}", unknownall);
+                sparta.error.all(str);
+            }
+
+            // check corner flags of cells that are OVERLAP
+            // warn if any interior corner flags are not set
+            // error if any corner flags on global boundaries are unset
+
+            double[] boxlo = sparta.domain.boxlo;
+            double[] boxhi = sparta.domain.boxhi;
+            int dimension = sparta.domain.dimension;
+
+            int ncorner = 4;
+            if (dimension == 3) ncorner = 8;
+
+            double[] x=new double[3];
+            int inside = 0;
+            int outside = 0;
+
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                if (cinfo[icell].type != (int)Enum4.OVERLAP) continue;
+                for (i = 0; i < ncorner; i++)
+                {
+                    if (cinfo[icell].corner[i] != (int)Enum4.UNKNOWN) continue;
+                    if (i % 2 == 0) x[0] = cells[icell].lo[0];
+                    else x[0] = cells[icell].hi[0];
+                    if ((i / 2) % 2 == 0) x[1] = cells[icell].lo[1];
+                    else x[1] = cells[icell].hi[1];
+                    if (dimension == 3)
+                    {
+                        if (i / 4 == 0) x[2] = cells[icell].lo[2];
+                        else x[2] = cells[icell].hi[2];
+                    }
+                    else x[2] = 0.0;
+
+                    if (Geometry.point_on_hex(x, boxlo, boxhi)!=0)
+                    {
+                        Console.WriteLine("BAD CORNER icell {0} id {1} type {3} icorner {4} x {5:G} {6:G} {7:G} cflags {8} {9} {10} {11} \n",
+                               icell, cells[icell].id, cinfo[icell].type, i, x[0], x[1], x[2],
+                               cinfo[icell].corner[0],
+                               cinfo[icell].corner[1],
+                               cinfo[icell].corner[2],
+                               cinfo[icell].corner[3]);
+                        outside++;
+                    }
+                    else inside++;
+                }
+            }
+
+            int insideall=0;
+            sparta.mpi.MPI_Allreduce(ref inside, ref insideall, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            if (insideall!=0)
+            {
+                string str = string.Format("Grid cell interior corner points marked as unknown (volume will be wrong if cell is effectively outside) = {0}",
+                    insideall);
+                if (sparta.comm.me == 0) sparta.error.all(str);
+            }
+
+            int outsideall=0;
+            sparta.mpi.MPI_Allreduce(ref outside, ref outsideall, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            if (outsideall!=0)
+            {
+                string str = string.Format("Grid cell corner points on boundary marked as unknown = {0}",
+                    outsideall);
+                sparta.error.all(str);
+            }
+
+            int volzero = 0;
+            for (int icell = 0; icell < nlocal; icell++)
+            {
+                if (cells[icell].nsplit <= 0) continue;
+                if (cinfo[icell].type == (int)Enum4.OUTSIDE && cinfo[icell].volume == 0.0) volzero++;
+            }
+            int volzeroall=0;
+            sparta.mpi.MPI_Allreduce(ref volzero, ref volzeroall, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
+            if (outsideall!=0)
+            {
+                string str = string.Format("Grid cells marked outside, but with zero volume = {0}",
+                    volzeroall);
+                sparta.error.all(str);
+            }
+
+            if (flag!=0) flow_stats();
         }
 
 
@@ -1828,8 +1927,8 @@ namespace cstest
         }
 
 
-        //void flow_stats();
-        //double flow_volume();
+        
+        
 
         //// grid_comm.cpp
         //// static variable for ring communication callback to access class data

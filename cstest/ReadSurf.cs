@@ -36,19 +36,19 @@ namespace cstest
         {
             arg = new string[narg];
             Array.Copy(args, 1, arg, 0, narg);
-            if (sparta.grid.exist==0)
-                sparta.error.all( "Cannot read_surf before grid is defined");
+            if (sparta.grid.exist == 0)
+                sparta.error.all("Cannot read_surf before grid is defined");
 
             sparta.surf.exist = 1;
             dim = sparta.domain.dimension;
 
-            if (narg < 1) sparta.error.all( "Illegal read_surf command");
+            if (narg < 1) sparta.error.all("Illegal read_surf command");
 
             // read header info
 
             if (me == 0)
             {
-                if (sparta.screen!=null)
+                if (sparta.screen != null)
                 {
                     Console.WriteLine("Reading surf file ...\n");
                     new StreamWriter(sparta.screen).Write("Reading surf file ...\n");
@@ -110,7 +110,7 @@ namespace cstest
             origin[0] = origin[1] = origin[2] = 0.0;
             int grouparg = 0;
             int typeadd = 0;
-            int partflag =(int) Enum2.NONE;
+            int partflag = (int)Enum2.NONE;
             int filearg = 0;
 
             int iarg = 1;
@@ -169,7 +169,7 @@ namespace cstest
                             sparta.error.all("Invalid read_surf geometry transformation for 2d simulation");
                         double ax1 = sparta.domain.boxlo[0] + fx * sparta.domain.xprd;
                         double ay1 = sparta.domain.boxlo[1] + fy * sparta.domain.yprd;
-                        double az1=0.0;
+                        double az1 = 0.0;
                         if (dim == 3) az = sparta.domain.boxlo[2] + fz * sparta.domain.zprd;
                         double dx2 = ax1 - origin[0];
                         double dy2 = ay1 - origin[1];
@@ -256,12 +256,12 @@ namespace cstest
             }
             // error test on particles
 
-            if (sparta.particle.exist !=0&& partflag == (int)Enum2.NONE)
+            if (sparta.particle.exist != 0 && partflag == (int)Enum2.NONE)
                 sparta.error.all("Using read_surf particle none when particles exist");
 
             // if specified, apply group and typeadd keywords
             // these reset per-element mask/type info
-            if (grouparg!=0)
+            if (grouparg != 0)
             {
                 int igroup = sparta.surf.find_group(arg[grouparg]);
                 if (igroup < 0) igroup = sparta.surf.add_group(arg[grouparg]);
@@ -291,7 +291,7 @@ namespace cstest
                 }
             }
 
-            if (typeadd!=0)
+            if (typeadd != 0)
             {
                 if (dim == 2)
                 {
@@ -319,7 +319,7 @@ namespace cstest
             sparta.surf.pts = pts;
             sparta.surf.lines = lines;
             sparta.surf.tris = tris;
-            
+
             sparta.surf.npoint = npoint_old + npoint_new;
             sparta.surf.nline = nline_old + nline_new;
             sparta.surf.ntri = ntri_old + ntri_new;
@@ -327,30 +327,30 @@ namespace cstest
             // extent of surf after geometric transformations
             // compute sizes of smallest surface elements
 
-            double[,] extent=new double[3,2];
+            double[,] extent = new double[3, 2];
             extent[0, 0] = extent[1, 0] = extent[2, 0] = BIG;
             extent[0, 1] = extent[1, 1] = extent[2, 1] = -BIG;
 
             int m = npoint_old;
             for (int i = 0; i < npoint_new; i++)
             {
-                extent[0,0] = Math.Min(extent[0,0], pts[m].x[0]);
-                extent[0,1] = Math.Max(extent[0,1], pts[m].x[0]);
-                extent[1,0] = Math.Min(extent[1,0], pts[m].x[1]);
-                extent[1,1] = Math.Max(extent[1,1], pts[m].x[1]);
-                extent[2,0] = Math.Min(extent[2,0], pts[m].x[2]);
-                extent[2,1] = Math.Max(extent[2,1], pts[m].x[2]);
+                extent[0, 0] = Math.Min(extent[0, 0], pts[m].x[0]);
+                extent[0, 1] = Math.Max(extent[0, 1], pts[m].x[0]);
+                extent[1, 0] = Math.Min(extent[1, 0], pts[m].x[1]);
+                extent[1, 1] = Math.Max(extent[1, 1], pts[m].x[1]);
+                extent[2, 0] = Math.Min(extent[2, 0], pts[m].x[2]);
+                extent[2, 1] = Math.Max(extent[2, 1], pts[m].x[2]);
                 m++;
             }
 
-            double minlen=0, minarea=0;
+            double minlen = 0, minarea = 0;
             if (dim == 2) minlen = shortest_line();
-            if (dim == 3) smallest_tri(out minlen,out minarea);
+            if (dim == 3) smallest_tri(out minlen, out minarea);
 
             if (me == 0)
             {
-                
-                if (sparta.screen!=null)
+
+                if (sparta.screen != null)
                 {
                     string str1 = string.Format("  {0:G6} {1:G6} xlo xhi\n", extent[0, 0], extent[0, 1]);
                     string str2 = string.Format("  {0:G6} {1:G6} ylo yhi\n", extent[1, 0], extent[1, 1]);
@@ -366,7 +366,7 @@ namespace cstest
                         string str4 = string.Format("  {0} min triangle edge length\n", minlen);
                         string str5 = string.Format("  {0} min triangle area\n", minarea);
                         Console.WriteLine(str1 + str2 + str3 + str4 + str5);
-                        new StreamWriter(sparta.screen).WriteLine(str1 + str2 + str3 + str4+str5);
+                        new StreamWriter(sparta.screen).WriteLine(str1 + str2 + str3 + str4 + str5);
                     }
                 }
                 if (sparta.logfile != null)
@@ -383,7 +383,7 @@ namespace cstest
                     {
                         string str4 = string.Format("  {0} min triangle edge length\n", minlen);
                         string str5 = string.Format("  {0} min triangle area\n", minarea);
-                        new StreamWriter(sparta.logfile).WriteLine(str1 + str2 + str3 + str4+str5);
+                        new StreamWriter(sparta.logfile).WriteLine(str1 + str2 + str3 + str4 + str5);
                     }
                 }
             }
@@ -399,16 +399,16 @@ namespace cstest
 
             // write out new surf file if requested
             // do this before assigning surfs to grid cells, in case an error occurs
-            if (filearg!=0)
+            if (filearg != 0)
             {
                 WriteSurf wf = new WriteSurf(sparta);
                 if (sparta.comm.me == 0)
                 {
-                    FileStream fp = new FileStream(arg[filearg],FileMode.Open,FileAccess.Write);
-                    if (fp==null)
+                    FileStream fp = new FileStream(arg[filearg], FileMode.Open, FileAccess.Write);
+                    if (fp == null)
                     {
-                        string str=string.Format( "Cannot open surface file {0}", arg[0]);
-                        sparta.error.one( str);
+                        string str = string.Format("Cannot open surface file {0}", arg[0]);
+                        sparta.error.one(str);
                     }
                     wf.write_file(fp);
                     fp.Close();
@@ -420,12 +420,12 @@ namespace cstest
             // map surfs to grid cells
             // -----------------------
 
-           sparta.mpi.MPI_Barrier(sparta.world);
-            double time2 =sparta.mpi.MPI_Wtime();
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double time2 = sparta.mpi.MPI_Wtime();
 
             // sort particles
 
-            if (sparta.particle.exist!=0) sparta.particle.sort();
+            if (sparta.particle.exist != 0) sparta.particle.sort();
 
             // make list of surf elements I own
             // assign surfs to grid cells
@@ -436,7 +436,7 @@ namespace cstest
             sparta.grid.unset_neighbors();
             sparta.grid.remove_ghosts();
 
-            if (sparta.particle.exist !=0 && sparta.grid.nsplitlocal!=0)
+            if (sparta.particle.exist != 0 && sparta.grid.nsplitlocal != 0)
             {
                 Grid.ChildCell[] cells = sparta.grid.cells;
                 int nglocal = sparta.grid.nlocal;
@@ -447,8 +447,8 @@ namespace cstest
 
             sparta.grid.clear_surf();
 
-           sparta.mpi.MPI_Barrier(sparta.world);
-            double time3 =sparta.mpi.MPI_Wtime();
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double time3 = sparta.mpi.MPI_Wtime();
 
             // error checks that can be done before surfs are mapped to grid cells
 
@@ -463,19 +463,19 @@ namespace cstest
                 check_neighbor_norm_3d();
             }
 
-           sparta.mpi.MPI_Barrier(sparta.world);
-            double time4 =sparta.mpi.MPI_Wtime();
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double time4 = sparta.mpi.MPI_Wtime();
 
             // map surfs to grid cells then error check
             // check done on per-grid-cell basis, too expensive to do globally
 
-            sparta.grid.surf2grid(1,1);
+            sparta.grid.surf2grid(1, 1);
 
             if (dim == 2) check_point_near_surf_2d();
             else check_point_near_surf_3d();
 
-           sparta.mpi.MPI_Barrier(sparta.world);
-            double time5 =sparta.mpi.MPI_Wtime();
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double time5 = sparta.mpi.MPI_Wtime();
 
             // re-setup grid ghosts and neighbors
 
@@ -484,8 +484,8 @@ namespace cstest
             sparta.grid.reset_neighbors();
             sparta.comm.reset_neighbors();
 
-           sparta.mpi.MPI_Barrier(sparta.world);
-            double time6 =sparta.mpi.MPI_Wtime();
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double time6 = sparta.mpi.MPI_Wtime();
 
             // flag cells and corners as OUTSIDE or INSIDE
 
@@ -495,15 +495,15 @@ namespace cstest
             // DEBUG
             //sparta.grid.debug();
 
-           sparta.mpi.MPI_Barrier(sparta.world);
-            double time7 =sparta.mpi.MPI_Wtime();
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double time7 = sparta.mpi.MPI_Wtime();
 
             // remove particles in any cell that is now INSIDE or has new surfs
             // reassign particles in split cells to sub cell owner
             // compress particles if any flagged for deletion
 
-            bigint ndeleted=0;
-            if (sparta.particle.exist!=0)
+            bigint ndeleted = 0;
+            if (sparta.particle.exist != 0)
             {
                 Grid.ChildCell[] cells = sparta.grid.cells;
                 Grid.ChildInfo[] cinfo = sparta.grid.cinfo;
@@ -515,14 +515,14 @@ namespace cstest
                     if (cinfo[icell].type == (int)Enum3.INSIDE)
                     {
                         if (partflag == (int)Enum2.KEEP)
-                            sparta.error.one( "Particles are inside new surfaces");
-                        if (cinfo[icell].count!=0) delflag = 1;
+                            sparta.error.one("Particles are inside new surfaces");
+                        if (cinfo[icell].count != 0) delflag = 1;
                         sparta.particle.remove_all_from_cell(cinfo[icell].first);
                         cinfo[icell].count = 0;
                         cinfo[icell].first = -1;
                         continue;
                     }
-                    if (cells[icell].nsurf!=0 && cells[icell].nsplit >= 1)
+                    if (cells[icell].nsurf != 0 && cells[icell].nsplit >= 1)
                     {
                         int nsurf = cells[icell].nsurf;
                         int[] csurfs = cells[icell].csurfs;
@@ -543,7 +543,7 @@ namespace cstest
                         }
                         if (a < nsurf && partflag == (int)Enum2.CHECK)
                         {
-                            if (cinfo[icell].count!=0) delflag = 1;
+                            if (cinfo[icell].count != 0) delflag = 1;
                             sparta.particle.remove_all_from_cell(cinfo[icell].first);
                             cinfo[icell].count = 0;
                             cinfo[icell].first = -1;
@@ -553,19 +553,19 @@ namespace cstest
                         sparta.grid.assign_split_cell_particles(icell);
                 }
                 int nlocal_old = sparta.particle.nlocal;
-                if (delflag!=0) sparta.particle.compress_rebalance();
+                if (delflag != 0) sparta.particle.compress_rebalance();
                 bigint delta = nlocal_old - sparta.particle.nlocal;
-               sparta.mpi.MPI_Allreduce(ref delta, ref ndeleted, 1,MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+                sparta.mpi.MPI_Allreduce(ref delta, ref ndeleted, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
             }
 
-           sparta.mpi.MPI_Barrier(sparta.world);
-            double time8 =sparta.mpi.MPI_Wtime();
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double time8 = sparta.mpi.MPI_Wtime();
 
             double time_total = time6 - time1;
 
             if (sparta.comm.me == 0)
             {
-                if (sparta.particle.exist!=0)
+                if (sparta.particle.exist != 0)
                 {
                     string str1 = string.Format("  {0} deleted particles\n", ndeleted);
                     string str2 = string.Format("  CPU time = {0} secs\n", time_total);
@@ -574,13 +574,13 @@ namespace cstest
                             100.0 * (time4 - time3) / time_total, 100.0 * (time5 - time4) / time_total,
                             100.0 * (time6 - time5) / time_total, 100.0 * (time7 - time6) / time_total,
                             100.0 * (time8 - time7) / time_total);
-                    Console.WriteLine(str1+str2+str3);
-                    if (sparta.logfile!=null)
+                    Console.WriteLine(str1 + str2 + str3);
+                    if (sparta.logfile != null)
                     {
                         new StreamWriter(sparta.logfile).WriteLine(str1 + str2 + str3);
                     }
                 }
-                
+
             }
         }
 

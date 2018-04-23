@@ -46,6 +46,19 @@ namespace cstest
             //   since any of them may be invoked by initial thermo
             // do not clear out invocation times stored within a compute,
             //   b/c some may be holdovers from previous run, like for ave fixes
+
+            for (i = 0; i < ncompute; i++)
+            {
+                compute[i].init();
+                compute[i].invoked_scalar = -1;
+                compute[i].invoked_vector = -1;
+                compute[i].invoked_array = -1;
+                compute[i].invoked_per_particle = -1;
+                compute[i].invoked_per_grid = -1;
+                compute[i].invoked_per_surf = -1;
+            }
+            addstep_compute_all(sparta.update.ntimestep);
+
         }
         //public void setup();
         //public virtual void start_of_step();
@@ -146,7 +159,12 @@ namespace cstest
 
         //public void clearstep_compute();
         //public void addstep_compute(bigint);
-        //public void addstep_compute_all(bigint);
+        public void addstep_compute_all(bigint newstep)
+        {
+            for (int icompute = 0; icompute < n_timeflag; icompute++)
+                if (compute[list_timeflag[icompute]].invoked_flag!=0)
+                    compute[list_timeflag[icompute]].addstep(newstep);
+        }
 
         public void list_init_fixes()
         {

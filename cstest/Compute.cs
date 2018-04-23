@@ -126,19 +126,45 @@ namespace cstest
 
         public int kokkos_flag;          // 1 if Kokkos-enabled
         public int copy, copymode;        // 1 if copy of class (prevents deallocation of
-                                    //  base class when child copy is destroyed)
-         
-         // NOTE: get rid of these methods
+                                          //  base class when child copy is destroyed)
+
+        // NOTE: get rid of these methods
         //public virtual void post_process_grid_old(void*, void*, int, int, double[], int) { }
         //public virtual void normwhich(int, int &, int &) { }
         //public virtual double[] normptr(int) { return NULL; }
-         
+
         //public virtual int surfinfo(int*&) { return 0; }
-         
-        //public void addstep(bigint);
+
+        public void addstep(bigint ntimestep)
+        {
+            // i = location in list to insert ntimestep
+
+            int i;
+            for (i = ntime - 1; i >= 0; i--)
+            {
+                if (ntimestep == tlist[i]) return;
+                if (ntimestep < tlist[i]) break;
+            }
+            i++;
+
+            // extend list as needed
+
+            if (ntime == maxtime)
+            {
+                maxtime += DELTA;
+                tlist = new bigint[maxtime];
+                //memory->grow(tlist, maxtime, "compute:tlist");
+            }
+
+            // move remainder of list upward and insert ntimestep
+
+            for (int j = ntime - 1; j >= i; j--) tlist[j + 1] = tlist[j];
+            tlist[i] = ntimestep;
+            ntime++;
+        }
         //public int matchstep(bigint);
         //public void clearstep();
-         
+
         //public virtual void reallocate() { }
         //public virtual bigint memory_usage();
 

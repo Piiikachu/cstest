@@ -301,7 +301,10 @@ namespace cstest
                 MathExtra.norm3(norm);
                 norm[2] = 0.0;
                 Line line = lines[m];
-                line.norm= norm;
+                line.norm = new double[3];
+                line.norm[0]= norm[0];
+                line.norm[1] = norm[1];
+                line.norm[2] = norm[2];
                 lines[m] = line; 
                         
                 m++;
