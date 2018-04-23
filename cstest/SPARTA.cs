@@ -644,7 +644,7 @@ namespace cstest
                 collide.init();
             }
             modify.init();
-            //output.init();
+            output.init();
             //timer.init();
         }
         public void destroy()

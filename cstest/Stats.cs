@@ -81,110 +81,56 @@ namespace cstest
 
         }
 
-        //public void Init()
-        //{
-        //    int i, n;
+        public void init()
+        {
+            int i, n;
 
-        //    // set format string for each field
-        //    // add trailing '/n' to last value
+            // set format string for each field
+            // add trailing '/n' to last value
 
-        //    string format_line = null;
-        //    if (format_line_user!=null)
-        //    {
-        //        format_line =string.Copy(format_line_user);
-        //    }
+            string format_line = null ;
+            if (format_line_user!=null)
+            {
+                format_line=string.Copy(format_line_user);
+            }
+            //string ptr,format_line_ptr;
+            //for (i = 0; i < nfield; i++)
+            //{
+            //    format[i][0] = '\0';
 
-        //    string ptr,format_line_ptr;
-        //    for (i = 0; i < nfield; i++)
-        //    {
-        //        format[i][0] = '\0';
+            //    if (format_line!=null)
+            //    {
+            //        if (i == 0) format_line_ptr = strtok(format_line, " \0");
+            //        else format_line_ptr = strtok(NULL, " \0");
+            //    }
 
-        //        if (format_line!=null)
-        //        {
-        //            if (i == 0) format_line_ptr = strtok(format_line, " \0");
-        //            else format_line_ptr = strtok(NULL, " \0");
+            //    if (format_column_user[i]) ptr = format_column_user[i];
+            //    else if (vtype[i] == FLOAT)
+            //    {
+            //        if (format_float_user) ptr = format_float_user;
+            //        else if (format_line_user) ptr = format_line_ptr;
+            //        else ptr = format_float_def;
+            //    }
+            //    else if (vtype[i] == INT)
+            //    {
+            //        if (format_int_user) ptr = format_int_user;
+            //        else if (format_line_user) ptr = format_line_ptr;
+            //        else ptr = format_int_def;
+            //    }
+            //    else if (vtype[i] == BIGINT)
+            //    {
+            //        if (format_bigint_user) ptr = format_bigint_user;
+            //        else if (format_line_user) ptr = format_line_ptr;
+            //        else ptr = format_bigint_def;
+            //    }
 
+            //    n = strlen(format[i]);
+            //    sprintf(&format[i][n], "%s ", ptr);
+            //}
+            //strcat(format[nfield - 1], "\n");
 
-
-        //        }
-
-        //        if (format_column_user[i]!=null)
-        //        {
-        //            ptr = format_column_user[i];
-        //        }
-        //        else if (vtype[i] == Enum1.FLOAT)
-        //        {
-        //            if (format_float_user) ptr = format_float_user;
-        //            else if (format_line_user) ptr = format_line_ptr;
-        //            else ptr = format_float_def;
-        //        }
-        //        else if (vtype[i] == INT)
-        //        {
-        //            if (format_int_user) ptr = format_int_user;
-        //            else if (format_line_user) ptr = format_line_ptr;
-        //            else ptr = format_int_def;
-        //        }
-        //        else if (vtype[i] == BIGINT)
-        //        {
-        //            if (format_bigint_user) ptr = format_bigint_user;
-        //            else if (format_line_user) ptr = format_line_ptr;
-        //            else ptr = format_bigint_def;
-        //        }
-
-        //        n = strlen(format[i]);
-        //        sprintf(&format[i][n], "%s ", ptr);
-        //    }
-        //    strcat(format[nfield - 1], "\n");
-
-        //    delete[] format_line;
-
-        //    // find current ptr for each SurfCollide and SurfReact ID
-
-        //    int m;
-
-        //    for (int i = 0; i < nsurfcollide; i++)
-        //    {
-        //        m = surf->find_collide(id_surf_collide[i]);
-        //        if (m < 0) error->all(FLERR, "Could not find stats surf collide ID");
-        //        sc[i] = surf->sc[m];
-        //    }
-        //    for (int i = 0; i < nsurfreact; i++)
-        //    {
-        //        m = surf->find_react(id_surf_react[i]);
-        //        if (m < 0) error->all(FLERR, "Could not find stats surf collide ID");
-        //        sr[i] = surf->sr[m];
-        //    }
-
-        //    // find current ptr for each Compute ID
-
-        //    for (int i = 0; i < ncompute; i++)
-        //    {
-        //        m = modify->find_compute(id_compute[i]);
-        //        if (m < 0) error->all(FLERR, "Could not find stats compute ID");
-        //        computes[i] = modify->compute[m];
-        //    }
-
-        //    // find current ptr for each Fix ID
-        //    // check that fix frequency is acceptable with stats output frequency
-
-        //    for (int i = 0; i < nfix; i++)
-        //    {
-        //        m = modify->find_fix(id_fix[i]);
-        //        if (m < 0) error->all(FLERR, "Could not find stats fix ID");
-        //        fixes[i] = modify->fix[m];
-        //        if (output->stats_every % fixes[i]->global_freq)
-        //            error->all(FLERR, "Stats and fix not computed at compatible times");
-        //    }
-
-        //    // find current ptr for each Variable ID
-
-        //    for (int i = 0; i < nvariable; i++)
-        //    {
-        //        m = input->variable->find(id_variable[i]);
-        //        if (m < 0) error->all(FLERR, "Could not find stats variable name");
-        //        variables[i] = m;
-        //    }
-        //}
+            //delete[] format_line;
+        }
         //public void modify_params(int, string[]);
         public void set_fields(int narg,string[] arg)
         {
