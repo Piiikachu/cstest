@@ -645,7 +645,7 @@ namespace cstest
             }
             modify.init();
             output.init();
-            //timer.init();
+            timer.init();
         }
         public void destroy()
         {

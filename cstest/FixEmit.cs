@@ -19,7 +19,74 @@ namespace cstest
             mask |= START_OF_STEP;
             return mask;
         }
-        //public virtual void init();
+        public override void init()
+        {
+            sparta.particle.exist = 1;
+            ntotal = 0;
+
+            int dimension = sparta.domain.dimension;
+            Grid.ChildCell[] cells = sparta.grid.cells;
+            Grid.ChildInfo[] cinfo = sparta.grid.cinfo;
+            nglocal = sparta.grid.nlocal;
+
+            if (nglocal > nglocalmax)
+            {
+                nglocalmax = nglocal;
+                c2list = new int[nglocalmax];
+                //memory.create(c2list, nglocalmax, "emit:c2list");
+            }
+
+            // upsplit, split, sub cells store c2list flag
+            // upsplit, split cells can store clist data, but only if have tasks
+            // no tasks for a cell inside surface
+            // no tasks if cell is entirely outside region bounding box
+
+            int flag, ntaskcell, ntaskfirst;
+
+            nlist = 0;
+            ntaskfirst = 0;
+
+            for (int icell = 0; icell < nglocal; icell++)
+            {
+                c2list[icell] = -1;
+                if (cells[icell].nsplit <= 0) continue;
+                if (cinfo[icell].type == (int) Enum1.INSIDE) continue;
+                if (region!=null && region.bboxflag!=0)
+                {
+                    flag = 1;
+                    if (cells[icell].hi[0] > region.extent_xlo &&
+                        cells[icell].lo[0] < region.extent_xhi) flag = 0;
+                    if (cells[icell].hi[1] > region.extent_ylo &&
+                        cells[icell].lo[1] < region.extent_yhi) flag = 0;
+                    if (dimension == 3)
+                    {
+                        if (cells[icell].hi[2] > region.extent_zlo &&
+                            cells[icell].lo[2] < region.extent_zhi) flag = 0;
+                    }
+                    if (flag!=0) continue;
+                }
+
+                ntaskcell = create_task(icell);
+                if (ntaskcell)
+                {
+                    if (nlist == nlistmax)
+                    {
+                        nlistmax += DELTAGRID;
+                        memory.grow(clist, nlistmax, "emit:clist");
+                        memory.grow(clistnum, nlistmax, "emit:clistnum");
+                        memory.grow(clistfirst, nlistmax, "emit:clistfirst");
+                    }
+                    c2list[icell] = nlist;
+                    clist[nlist] = icell;
+                    clistnum[nlist] = ntaskcell;
+                    clistfirst[nlist] = ntaskfirst;
+                    ntaskfirst += ntaskcell;
+                    nlist++;
+                }
+            }
+
+            active_current = 0;
+        }
         //public void start_of_step();
         //public double compute_vector(int);
 
@@ -78,7 +145,10 @@ namespace cstest
         protected int active_current;  // set to 0 if grid cell data struct changes
                                        // triggers rebuild of active cell list in child classes
 
-        //protected virtual int create_task(int) = 0;
+        protected virtual int create_task(int icell)
+        {
+            return 0;
+        }
         //protected virtual void perform_task() = 0;
         //protected virtual int pack_task(int, char*, int) = 0;
         //protected virtual int unpack_task(char*, int) = 0;

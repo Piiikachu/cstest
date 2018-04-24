@@ -188,7 +188,30 @@ namespace cstest
             if (moveperturb != null) perturbflag = 1;
             else perturbflag = 0;
         }
-        //      public virtual void setup();
+        public virtual void setup()
+        {
+            // initialize counters in case stats outputs them
+            // initialize running stats before each run
+
+            ntouch_one = ncomm_one = 0;
+            nboundary_one = nexit_one = 0;
+            nscheck_one = nscollide_one = 0;
+            sparta.surf.nreact_one = 0;
+
+            first_running_step = sparta.update.ntimestep;
+            niterate_running = 0;
+            nmove_running = ntouch_running = ncomm_running = 0;
+            nboundary_running = nexit_running = 0;
+            nscheck_running = nscollide_running = 0;
+            sparta.surf.nreact_running = 0;
+            nstuck = 0;
+
+            collide_react = collide_react_setup();
+            bounce_tally = bounce_setup();
+
+            sparta.modify.setup();
+            sparta.output.setup(1);
+        }
         //      public virtual void run(int);
         public void global(int nnarg, string[] arg)
         {
@@ -477,10 +500,46 @@ namespace cstest
         int surf_pre_tally;       // 1 to log particle stats before surf collide
         int boundary_pre_tally;   // 1 to log particle stats before boundary collide
 
-        //      int collide_react_setup();
+        int collide_react_setup()
+        {
+            nsc = sparta.surf.nsc;
+            sc = sparta.surf.sc;
+            nsr = sparta.surf.nsr;
+            sr = sparta.surf.sr;
+
+            if (sc!=null || sr != null) return 1;
+            return 0;
+        }
         //      void collide_react_update();
 
-        //      int bounce_setup();
+        int bounce_setup()
+        {
+            slist_compute = blist_compute = null;
+            nslist_compute = nblist_compute = 0;
+            for (int i = 0; i < sparta.modify.ncompute; i++)
+            {
+                if (sparta.modify.compute[i].surf_tally_flag!=0) nslist_compute++;
+                if (sparta.modify.compute[i].boundary_tally_flag != 0) nblist_compute++;
+            }
+
+            if (nslist_compute!=0) slist_compute = new List<Compute>(nslist_compute);
+            if (nblist_compute!=0) blist_compute = new List<Compute>(nblist_compute);
+            if (nslist_compute!=0) slist_active =  new List<Compute>(nslist_compute);
+            if (nblist_compute != 0) blist_active =new List<Compute>(nblist_compute);
+
+            nslist_compute = nblist_compute = 0;
+            for (int i = 0; i < sparta.modify.ncompute; i++)
+            {
+                if (sparta.modify.compute[i].surf_tally_flag!=0)
+                    slist_compute[nslist_compute++] = sparta.modify.compute[i];
+                if (sparta.modify.compute[i].boundary_tally_flag != 0)
+                    blist_compute[nblist_compute++] = sparta.modify.compute[i];
+            }
+
+            if (nslist_compute != 0 || nblist_compute != 0) return 1;
+            nsurf_tally = nboundary_tally = 0;
+            return 0;
+        }
         //      void bounce_set(bigint);
         //      void reset_timestep(bigint);
 
@@ -897,26 +956,26 @@ namespace cstest
                                 //    memcpy(&iorig, &particles[i], sizeof(Particle::OnePart));
 
                                 //if (DIM == 3)
-                                //    jpart = surf->sc[tri->isc]->
-                                //      collide(ipart, tri->norm, dtremain, tri->isr);
+                                //    jpart = sparta.surf.sc[tri.isc].
+                                //      collide(ipart, tri.norm, dtremain, tri.isr);
                                 //if (DIM != 3)
-                                //    jpart = surf->sc[line->isc]->
-                                //      collide(ipart, line->norm, dtremain, line->isr);
+                                //    jpart = sparta.surf.sc[line.isc].
+                                //      collide(ipart, line.norm, dtremain, line.isr);
 
                                 //if (jpart)
                                 //{
-                                //    particles = particle->particles;
+                                //    particles = particle.particles;
                                 //    x = particles[i].x;
                                 //    v = particles[i].v;
-                                //    jpart->flag = PSURF + 1 + minsurf;
-                                //    jpart->dtremain = dtremain;
-                                //    jpart->weight = particles[i].weight;
+                                //    jpart.flag = PSURF + 1 + minsurf;
+                                //    jpart.dtremain = dtremain;
+                                //    jpart.weight = particles[i].weight;
                                 //    pstop++;
                                 //}
 
                                 //if (nsurf_tally)
                                 //    for (m = 0; m < nsurf_tally; m++)
-                                //        slist_active[m]->surf_tally(minsurf, &iorig, ipart, jpart);
+                                //        slist_active[m].surf_tally(minsurf, &iorig, ipart, jpart);
 
                                 //// nstuck = consective iterations particle is immobile
 
@@ -1023,7 +1082,7 @@ namespace cstest
                     //        }
                     //        break;
                     //    case Enum5.NPARENT:
-                    //        icell = grid->id_find_child(neigh[outface], x);
+                    //        icell = grid.id_find_child(neigh[outface], x);
                     //        if (icell >= 0)
                     //        {
                     //            if (DIM == 3 && SURF)

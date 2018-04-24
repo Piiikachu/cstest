@@ -96,9 +96,9 @@ namespace cstest
 
         public virtual void init()
         {
-
+            System.Console.WriteLine("fix virtual init");
         }
-        //public virtual void setup() { }
+        public virtual void setup() { System.Console.WriteLine("fix virtual setup"); }
 
         //public virtual void start_of_step() { }
         //public virtual void end_of_step() { }

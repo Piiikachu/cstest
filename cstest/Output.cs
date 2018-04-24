@@ -74,44 +74,102 @@ namespace cstest
         public void init()
         {
             stats.init();
-            //if (var_stats != 0)
-            //{
-            //    ivar_stats = sparta.input.variable.find(var_stats);
-            //    if (ivar_stats < 0)
-            //        sparta.error.all("Variable name for stats every does not exist");
-            //    if (!sparta.input.variable.equal_style(ivar_stats))
-            //        sparta.error.all("Variable for stats every is invalid style");
-            //}
+            if (var_stats != null)
+            {
+                ivar_stats = sparta.input.variable.find(var_stats);
+                if (ivar_stats < 0)
+                    sparta.error.all("Variable name for stats every does not exist");
+                if (sparta.input.variable.equal_style(ivar_stats)==0)
+                    sparta.error.all("Variable for stats every is invalid style");
+            }
 
-            //for (int i = 0; i < ndump; i++) dump[i].init();
-            //for (int i = 0; i < ndump; i++)
-            //    if (every_dump[i] == 0)
-            //    {
-            //        ivar_dump[i] = sparta.input.variable.find(var_dump[i]);
-            //        if (ivar_dump[i] < 0)
-            //            sparta.error.all("Variable name for dump every does not exist");
-            //        if (!sparta.input.variable.equal_style(ivar_dump[i]))
-            //            sparta.error.all("Variable for dump every is invalid style");
-            //    }
+            for (int i = 0; i < ndump; i++) dump[i].init();
+            for (int i = 0; i < ndump; i++)
+                if (every_dump[i] == 0)
+                {
+                    ivar_dump[i] = sparta.input.variable.find(var_dump[i]);
+                    if (ivar_dump[i] < 0)
+                        sparta.error.all("Variable name for dump every does not exist");
+                    if (sparta.input.variable.equal_style(ivar_dump[i])==0)
+                        sparta.error.all("Variable for dump every is invalid style");
+                }
 
-            //if (restart_flag_single!=0 && restart_every_single == 0)
-            //{
-            //    ivar_restart_single = sparta.input.variable.find(var_restart_single);
-            //    if (ivar_restart_single < 0)
-            //        sparta.error.all("Variable name for restart does not exist");
-            //    if (!sparta.input.variable.equal_style(ivar_restart_single))
-            //        sparta.error.all("Variable for restart is invalid style");
-            //}
-            //if (restart_flag_double != 0 && restart_every_double == 0)
-            //{
-            //    ivar_restart_double = sparta.input.variable.find(var_restart_double);
-            //    if (ivar_restart_double < 0)
-            //        sparta.error.all("Variable name for restart does not exist");
-            //    if (!sparta.input.variable.equal_style(ivar_restart_double))
-            //        sparta.error.all("Variable for restart is invalid style");
-            //}
+            if (restart_flag_single != 0 && restart_every_single == 0)
+            {
+                ivar_restart_single = sparta.input.variable.find(var_restart_single);
+                if (ivar_restart_single < 0)
+                    sparta.error.all("Variable name for restart does not exist");
+                if (sparta.input.variable.equal_style(ivar_restart_single)==0)
+                    sparta.error.all("Variable for restart is invalid style");
+            }
+            if (restart_flag_double != 0 && restart_every_double == 0)
+            {
+                ivar_restart_double = sparta.input.variable.find(var_restart_double);
+                if (ivar_restart_double < 0)
+                    sparta.error.all("Variable name for restart does not exist");
+                if (sparta.input.variable.equal_style(ivar_restart_double)==0)
+                    sparta.error.all("Variable for restart is invalid style");
+            }
         }
-        //public void setup(int);                   // initial output before run/min
+        public void setup(int memflag)                   // initial output before run/min
+        {
+            bigint ntimestep = sparta.update.ntimestep;
+
+            // perform dump at start of run only if:
+            //   current timestep is multiple of every and last dump not >= this step
+            //   this is first run after dump created and firstflag is set
+            //   note that variable freq will not write unless triggered by firstflag
+            // set next_dump to multiple of every or variable value
+            // set next_dump_any to smallest next_dump
+            // wrap dumps that invoke computes and variable eval with clear/add
+            // if dump not written now, use addstep_compute_all() since don't know
+            //   what computes the dump write would invoke
+            // if no dumps, set next_dump_any to last+1 so will not influence next
+
+            int writeflag;
+            if (ndump!=0)
+            {
+                for (int idump = 0; idump < ndump; idump++)
+                {
+                    if (dump[idump].clearstep!=0 || every_dump[idump] == 0)
+                        sparta.modify.clearstep_compute();
+                    writeflag = 0;
+                    if (every_dump[idump] != 0 && ntimestep % every_dump[idump] == 0 &&
+                        last_dump[idump] != ntimestep) writeflag = 1;
+                    if (last_dump[idump] < 0 && dump[idump].first_flag == 1) writeflag = 1;
+
+                    if (writeflag != 0)
+                    {
+                        dump[idump].write();
+                        last_dump[idump] = ntimestep;
+                    }
+                    if (every_dump[idump] != 0)
+                        next_dump[idump] =
+                          (ntimestep / every_dump[idump]) * every_dump[idump] + every_dump[idump];
+                    else
+                    {
+                        bigint nextdump = Convert.ToInt64
+                          (sparta.input.variable.compute_equal(ivar_dump[idump]));
+                        if (nextdump <= ntimestep)
+                            sparta.error.all("Dump every variable returned a bad timestep");
+                        next_dump[idump] = nextdump;
+                    }
+                    if (dump[idump].clearstep!=0 || every_dump[idump] == 0)
+                    {
+                        if (writeflag!=0) sparta.modify.addstep_compute(next_dump[idump]);
+                        else sparta.modify.addstep_compute_all(next_dump[idump]);
+                    }
+                    if (idump!=0) next_dump_any = Math.Min(next_dump_any, next_dump[idump]);
+                    else next_dump_any = next_dump[0];
+                }
+            }
+            else next_dump_any = sparta.update.laststep + 1;
+
+            // do not write restart files at start of run
+            // set next_restart values to multiple of every or variable value
+            // wrap variable eval with clear/add
+            // if no restarts, set next_restart to last+1 so will not influence next
+        }
         //public void write(bigint);                // output for current timestep
         //public void write_dump(bigint);           // force output of dump snapshots
         //public void write_restart(bigint);        // force output of a restart file

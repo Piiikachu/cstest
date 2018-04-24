@@ -127,7 +127,7 @@ namespace cstest
            return 1 if touches, else 0
         ------------------------------------------------------------------------- */
 
-        int line_quad_face_touch(double[] v0, double[] v1, int iface,
+        public static int line_quad_face_touch(double[] v0, double[] v1, int iface,
                      double[] lo, double[] hi)
         {
             // value = position of face
@@ -485,7 +485,7 @@ namespace cstest
            return 1 if touches, else 0
         ------------------------------------------------------------------------- */
 
-        int tri_hex_face_touch(double[] v0, double[] v1, double[] v2, int iface,
+        public static int tri_hex_face_touch(double[] v0, double[] v1, double[] v2, int iface,
                        double[] lo, double[] hi)
         {
             // value = position of face

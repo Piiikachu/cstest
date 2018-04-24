@@ -93,18 +93,18 @@ namespace cstest
             {
                 format_line=string.Copy(format_line_user);
             }
-            //string ptr,format_line_ptr;
+            //string ptr, format_line_ptr;
             //for (i = 0; i < nfield; i++)
             //{
             //    format[i][0] = '\0';
 
-            //    if (format_line!=null)
+            //    if (format_line != null)
             //    {
             //        if (i == 0) format_line_ptr = strtok(format_line, " \0");
             //        else format_line_ptr = strtok(NULL, " \0");
             //    }
 
-            //    if (format_column_user[i]) ptr = format_column_user[i];
+            //    if (format_column_user[i]!=null) ptr = format_column_user[i];
             //    else if (vtype[i] == FLOAT)
             //    {
             //        if (format_float_user) ptr = format_float_user;

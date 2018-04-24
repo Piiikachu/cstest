@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using bigint = System.Int64;
 
 namespace cstest
@@ -124,8 +125,117 @@ namespace cstest
             //suffix = filename + strlen(filename) - strlen(".gz");
             //if (suffix > filename && strcmp(suffix, ".gz") == 0) compressed = 1;
         }
-        //public void init();
-        //public virtual void write();
+        public void init()
+        {
+            // format = copy of default or user-specified line format
+
+            string str;
+            if (format_line_user!=null) str = format_line_user;
+            else str = format_default;
+
+            string format=string.Copy( str);
+
+            // tokenize the format string and add space at end of each format element
+            // if user-specified int/float format exists, use it instead
+            // if user-specified column format exists, use it instead
+            // lo priority = line, medium priority = int/float, hi priority = column
+
+            string ptr;
+            for (int i = 0; i < size_one; i++)
+            {
+                
+                ptr=format.Split('\0')[i];
+                
+                if (ptr == null) sparta.error.all("Dump_modify format line is too short");
+
+                if (format_column_user[i] != null)
+                {
+                    vformat[i] = string.Copy(format_column_user[i]);
+                }
+                else if (vtype[i] == (int)Enum1.INT && format_int_user != null)
+                {
+                    vformat[i] = string.Copy(format_int_user);
+                }
+                else if (vtype[i] == (int)Enum1.DOUBLE && format_float_user != null)
+                {
+                    vformat[i] = string.Copy(format_float_user);
+                }
+                else if (vtype[i] == (int)Enum1.BIGINT && format_bigint_user!=null)
+                {
+                    vformat[i] = string.Copy(format_bigint_user);
+                }
+                else
+                {
+                    vformat[i] = string.Copy(ptr);
+                }
+
+                vformat[i] +=( " ");
+            }
+
+            // setup boundary string
+
+            int m = 0;
+            for (int idim = 0; idim < 3; idim++)
+            {
+                for (int iside = 0; iside < 2; iside++)
+                {
+                    if (sparta.domain.bflag[idim * 2 + iside] == (int)Enum2.PERIODIC) boundstr[m++] = 'p';
+                    else if (sparta.domain.bflag[idim * 2 + iside] == (int)Enum2.OUTFLOW) boundstr[m++] = 'o';
+                    else if (sparta.domain.bflag[idim * 2 + iside] == (int)Enum2.REFLECT) boundstr[m++] = 'r';
+                    else if (sparta.domain.bflag[idim * 2 + iside] == (int)Enum2.AXISYM) boundstr[m++] = 'a';
+                    else if (sparta.domain.bflag[idim * 2 + iside] == (int)Enum2.SURFACE) boundstr[m++] = 's';
+                }
+                boundstr[m++] = ' ';
+            }
+            boundstr[8] = '\0';
+
+            // style-specific initialization
+
+            init_style();
+        }
+        public virtual void write()
+        {
+            // if file per timestep, open new file
+
+            if (multifile!=0) openfile();
+
+            // simulation box bounds
+
+            boxxlo = sparta.domain.boxlo[0];
+            boxxhi = sparta.domain.boxhi[0];
+            boxylo = sparta.domain.boxlo[1];
+            boxyhi = sparta.domain.boxhi[1];
+            boxzlo = sparta.domain.boxlo[2];
+            boxzhi = sparta.domain.boxhi[2];
+
+            // nme = # of dump lines this proc will contribute to dump
+
+            nme = count();
+
+            // ntotal = total # of dump lines in snapshot
+            // nmax = max # of dump lines on any proc
+
+            bigint bnme = nme;
+            sparta.mpi.MPI_Allreduce(ref bnme, ref ntotal, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+
+            int nmax=0;
+            if (multiproc != nprocs) sparta.mpi.MPI_Allreduce(ref nme, ref nmax, 1, MPI.MPI_INT, MPI.MPI_MAX, sparta.world);
+            else nmax = nme;
+
+            // write timestep header
+            // for multiproc,
+            //   nheader = # of lines in this file via Allreduce on clustercomm
+
+            bigint nheader = ntotal=0;
+            if (multiproc!=0)
+                sparta.mpi.MPI_Allreduce(ref bnme, ref nheader, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, clustercomm);
+
+            if (filewriter!=0) write_header(nheader);
+
+            // insure buf is sized for packing and communicating
+            // use nmax to insure filewriter proc can receive info from others
+            // limit nmax*size_one to int since used as arg in MPI calls
+        }
         public virtual void reset_grid()
         {
 
@@ -185,15 +295,82 @@ namespace cstest
          
         protected int[] vtype;                // type of each field (INT, DOUBLE, etc)
         protected string[] vformat;            // format string for each field
-        
-  //      protected int convert_string(int, double*);
 
-  //      virtual void init_style() = 0;
-  //virtual void openfile();
-  //      virtual int modify_param(int, string*) { return 0; }
-  //      virtual void write_header(bigint) = 0;
-  //virtual int count() = 0;
-  //virtual void pack() = 0;
-  //virtual void write_data(int, double*) = 0;
+        //      protected int convert_string(int, double*);
+
+        protected virtual void init_style() { System.Console.WriteLine("dump virtual initstyle "); }
+        protected virtual void openfile()
+        {
+            // single file, already opened, so just return
+
+            if (singlefile_opened!=0) return;
+            if (multifile == 0) singlefile_opened = 1;
+
+            // if one file per timestep, replace '*' with current timestep
+
+            string filecurrent = filename;
+            if (multiproc!=0)
+            {
+                filecurrent = multiname;
+            }
+            if (multifile!=0)
+            {
+                string filestar = string.Copy(filecurrent);
+
+                string[] ptr = filestar.Split('*');
+
+                if (padflag==0)
+                {
+                    filecurrent = string.Format("{0}{1}{2}", filestar, sparta.update.ntimestep, ptr[1]);
+                }
+                else
+                {
+                    filecurrent = string.Format("{0}{1}{2}", filestar, Convert.ToString(sparta.update.ntimestep, 8),ptr[1]);
+                }
+
+            }
+            // each proc with filewriter = 1 opens a file
+
+            if (filewriter!=0)
+            {
+                if (compressed != 0)
+                {
+                    Console.WriteLine("Dump compressed file");
+                }
+                else if (binary != 0)
+                {
+                    Console.WriteLine("Dump binary file");
+                }
+                else if (append_flag!=0)
+                {
+                    fp = new FileStream(filecurrent, FileMode.Append, FileAccess.Write);
+                }
+                else
+                {
+                    fp = new FileStream(filecurrent, FileMode.OpenOrCreate, FileAccess.Write);
+                }
+                if (fp ==null)
+                {
+                    sparta.error.one("Cannot open dump file");
+                }
+            }
+            else
+            {
+                fp = null;
+            }
+
+        }
+        //      virtual int modify_param(int, string*) { return 0; }
+        protected virtual void write_header(bigint nheader)
+        {
+            Console.WriteLine("Dump virtual write_header");
+        }
+        protected virtual int count()
+        {
+            Console.WriteLine("Dump virtual count");
+            return 0;
+        }
+        //virtual void pack() = 0;
+        //virtual void write_data(int, double*) = 0;
     }
 }

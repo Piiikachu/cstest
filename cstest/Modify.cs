@@ -60,7 +60,12 @@ namespace cstest
             addstep_compute_all(sparta.update.ntimestep);
 
         }
-        //public void setup();
+        public void setup()
+        {
+            // setup each fix
+
+            for (int i = 0; i < nfix; i++) fix[i].setup();
+        }
         //public virtual void start_of_step();
         //public virtual void end_of_step();
 
@@ -157,8 +162,17 @@ namespace cstest
         //public void delete_compute(const char*);
         //public int find_compute(const char*);
 
-        //public void clearstep_compute();
-        //public void addstep_compute(bigint);
+        public void clearstep_compute()
+        {
+            for (int icompute = 0; icompute < ncompute; icompute++)
+                compute[icompute].invoked_flag = 0;
+        }
+        public void addstep_compute(bigint newstep)
+        {
+            for (int icompute = 0; icompute < n_timeflag; icompute++)
+                if (compute[list_timeflag[icompute]].invoked_flag!=0)
+                    compute[list_timeflag[icompute]].addstep(newstep);
+        }
         public void addstep_compute_all(bigint newstep)
         {
             for (int icompute = 0; icompute < n_timeflag; icompute++)

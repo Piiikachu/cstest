@@ -14,7 +14,10 @@ namespace cstest
 
         public double[] array;
 
-        //public void init();
+        public void init()
+        {
+            for (int i = 0; i < (int)Enum1.TIME_N; i++) array[i] = 0.0;
+        }
         //public void stamp();
         //public void stamp(int);
         //public void barrier_start(int);

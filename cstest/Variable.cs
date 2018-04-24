@@ -270,22 +270,42 @@ namespace cstest
 
         //public void set(char*, int, string[]);
         //public int next(int, string[]);
-        //public int Find(string name)
-        //{
-        //    for (int i = 0; i < nvar; i++)
-        //     if (string.Equals(name, names[i])) return i;
-        //   return -1;
-        //}
+        public int find(string name)
+        {
+            for (int i = 0; i < nvar; i++)
+                if (string.Equals(name, names[i])) return i;
+            return -1;
+        }
 
-        //public int equal_style(int);
+        public int equal_style(int ivar)
+        {
+            if (style[ivar] == (int)Enum1.EQUAL || style[ivar] == (int)Enum1.INTERNAL) return 1;
+            return 0;
+        }
         //public int particle_style(int);
         //public int grid_style(int);
         //public int surf_style(int);
         //public int internal_style(int);
 
         //public char* retrieve(char*);
-        //public double compute_equal(int);
-        //public double compute_equal(char*);
+        public double compute_equal(int ivar)
+        {
+            if (eval_in_progress[ivar]!=0)
+                sparta.error.all("Variable has circular dependency");
+
+            eval_in_progress[ivar] = 1;
+
+            double value=0;
+            if (style[ivar] ==(int)Enum1.EQUAL) value = evaluate(data[ivar][0], null);
+            else if (style[ivar] == (int)Enum1.INTERNAL) value = dvalue[ivar];
+
+            eval_in_progress[ivar] = 0;
+            return value;
+        }
+        public double compute_equal(string str)
+        {
+            return evaluate(str, null);
+        }
         //public void compute_particle(int, double*, int, int);
         //public void compute_grid(int, double*, int, int);
         //public void compute_surf(int, double*, int, int) { }
@@ -314,7 +334,66 @@ namespace cstest
         //    //    strcpy(to[i], from[i]);
         //    //}
         //}
-        //private double evaluate(char*, Tree**);
+        private double evaluate(string str,Tree[] tree=null)
+        {
+            Console.WriteLine("variable.evaluate");
+            return 0;
+            //int op, opprevious;
+            //double value1, value2;
+            //char onechar;
+            //string ptr;
+
+            //double[] argstack=new double[MAXLEVEL];
+            //Tree[] treestack=new Tree[MAXLEVEL];
+            //int[] opstack= new int[MAXLEVEL];
+            //int nargstack = 0;
+            //int ntreestack = 0;
+            //int nopstack = 0;
+
+            //int i = 0;
+            //int expect = (int)Enum2.ARG;
+
+            //while (true)
+            //{
+            //    onechar = str[i];
+
+            //    // whitespace: just skip
+
+            //    if (char.IsWhiteSpace(onechar)) i++;
+
+            //    // ----------------
+            //    // parentheses: recursively evaluate contents of parens
+            //    // ----------------
+            //    else if (onechar=='(')
+            //    {
+            //        if (expect==(int)Enum2.OP)
+            //        {
+            //            sparta.error.all("Invalid syntax in variable formula");
+            //        }
+            //        expect = (int)Enum2.OP;
+
+            //        i = str.IndexOf(')', i);
+            //        string contents = str.Substring(str.IndexOf('('), i);
+            //        i++;
+
+            //        // evaluate contents and push on stack
+
+            //        if (tree!=null)
+            //        {
+            //            Tree newtree;
+            //            evaluate(contents, newtree);
+            //            treestack[ntreestack++] = newtree;
+            //        }
+            //        else
+            //        {
+            //            argstack[nargstack++] = evaluate(contents);
+            //        }
+
+            //    }
+            //}
+
+
+        }
         //private double collapse_tree(Tree*);
         //private double eval_tree(Tree*, int);
         //private void free_tree(Tree*);

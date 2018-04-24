@@ -177,9 +177,9 @@ namespace cstest
                 if (preflag != 0 || sparta.update.first_update == 0)
                 {
                     sparta.init();
-                    //sparta.update.setup();
+                    sparta.update.setup();
                 }
-                //else sparta.output.setup(0);
+                else sparta.output.setup(0);
 
 
             }
