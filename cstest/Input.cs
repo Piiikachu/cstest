@@ -338,7 +338,7 @@ namespace cstest
 
 
 
-            
+            //todo: split  ' ',StringSplitOptions.RemoveEmptyEntries
             string[] tempstr = line.Split();
             List<string> strings=new List<string>();
             foreach (string str in tempstr)
