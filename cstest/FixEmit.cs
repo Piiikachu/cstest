@@ -67,14 +67,17 @@ namespace cstest
                 }
 
                 ntaskcell = create_task(icell);
-                if (ntaskcell)
+                if (ntaskcell!=0)
                 {
                     if (nlist == nlistmax)
                     {
                         nlistmax += DELTAGRID;
-                        memory.grow(clist, nlistmax, "emit:clist");
-                        memory.grow(clistnum, nlistmax, "emit:clistnum");
-                        memory.grow(clistfirst, nlistmax, "emit:clistfirst");
+                        clist = new int[nlistmax];
+                        clistnum = new int[nlistmax];
+                        clistfirst = new int[nlistmax];
+                        //memory.grow(clist, nlistmax, "emit:clist");
+                        //memory.grow(clistnum, nlistmax, "emit:clistnum");
+                        //memory.grow(clistfirst, nlistmax, "emit:clistfirst");
                     }
                     c2list[icell] = nlist;
                     clist[nlist] = icell;
@@ -87,7 +90,14 @@ namespace cstest
 
             active_current = 0;
         }
-        //public void start_of_step();
+        public override void start_of_step()
+        {
+            if (sparta.update.ntimestep % nevery!=0) return;
+
+            nsingle = 0;
+            perform_task();
+            ntotal += nsingle;
+        }
         //public double compute_vector(int);
 
         //public void add_grid_one(int, int);
@@ -149,14 +159,25 @@ namespace cstest
         {
             return 0;
         }
-        //protected virtual void perform_task() = 0;
+        protected virtual void perform_task()
+        {
+            Console.WriteLine("fixemit virtual perform_task");
+        }
         //protected virtual int pack_task(int, char*, int) = 0;
         //protected virtual int unpack_task(char*, int) = 0;
         //protected virtual void copy_task(int, int, int, int) = 0;
-           
+
         //protected void grow_percell(int);
         //protected void grow_list();
-        //protected double mol_inflow(double, double, double);
+        protected double mol_inflow(double indot, double vscale, double fraction)
+        {
+            double scosine = indot / vscale;
+            if (scosine < -3.0) return 0.0;
+            double inward_number_flux = vscale * fraction *
+              (Math.Exp(-scosine * scosine) + Math.Sqrt(MyConst.MY_PI) * scosine * (1.0 + MyConst.Erf(scosine))) /
+              (2 * Math.Sqrt(MyConst.MY_PI));
+            return inward_number_flux;
+        }
         //protected int subsonic_temperature_check(int, double);
         protected void options(int narg, string[] arg)
         {

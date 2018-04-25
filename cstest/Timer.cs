@@ -18,10 +18,31 @@ namespace cstest
         {
             for (int i = 0; i < (int)Enum1.TIME_N; i++) array[i] = 0.0;
         }
-        //public void stamp();
-        //public void stamp(int);
-        //public void barrier_start(int);
-        //public void barrier_stop(int);
+        public void stamp()
+        {
+            // uncomment if want synchronized timing
+            // MPI_Barrier(world);
+            previous_time = sparta.mpi.MPI_Wtime();
+        }
+        public void stamp(int which)
+        {
+            // uncomment if want synchronized timing
+            // MPI_Barrier(world);
+            double current_time = sparta.mpi.MPI_Wtime();
+            array[which] += current_time - previous_time;
+            previous_time = current_time;
+        }
+        public void barrier_start(int which)
+        {
+            sparta.mpi.MPI_Barrier(sparta.world);
+            array[which] = sparta.mpi.MPI_Wtime();
+        }
+        public void barrier_stop(int which)
+        {
+            sparta.mpi.MPI_Barrier(sparta.world);
+            double current_time = sparta.mpi.MPI_Wtime();
+            array[which] = current_time - array[which];
+        }
         public double elapsed(int which)
         {
             double current_time = sparta.mpi.MPI_Wtime();

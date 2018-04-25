@@ -13,7 +13,15 @@ namespace cstest
         enum Enum2 { CONSTANT, VARIABLE };
 
         public const int MAXLINE = 1024;
-        //public virtual void init();
+        public new void init()
+        {
+            // initially read-in per-species params must match current species list
+
+            if (nparams != sparta.particle.nspecies)
+                sparta.error.all("VSS parameters do not match current species");
+
+            base.init();
+        }
 
         public override double vremax_init(int igroup, int jgroup)
         {

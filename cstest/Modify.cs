@@ -66,7 +66,11 @@ namespace cstest
 
             for (int i = 0; i < nfix; i++) fix[i].setup();
         }
-        //public virtual void start_of_step();
+        public virtual void start_of_step()
+        {
+            for (int i = 0; i < n_start_of_step; i++)
+                fix[list_start_of_step[i]].start_of_step();
+        }
         //public virtual void end_of_step();
 
         //public virtual void add_grid_one(int, int);
@@ -221,7 +225,13 @@ namespace cstest
         //public virtual void gas_react(int);
         //public virtual void surf_react(Particle::OnePart*, int &, int &);
 
-        //public bigint memory_usage();
+        public bigint memory_usage()
+        {
+            bigint bytes = 0;
+            for (int i = 0; i < nfix; i++) bytes += (long)fix[i].memory_usage();
+            for (int i = 0; i < ncompute; i++) bytes += compute[i].memory_usage();
+            return bytes;
+        }
         private SPARTA sparta;
 
         public Modify(SPARTA sparta)

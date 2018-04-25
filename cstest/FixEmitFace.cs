@@ -9,7 +9,7 @@ namespace cstest
 
     class FixEmitFace : FixEmit
     {
-        enum Enum1{ XLO, XHI, YLO, YHI, ZLO, ZHI, INTERIOR };         // same as Domain
+        protected enum Enum1:int{ XLO, XHI, YLO, YHI, ZLO, ZHI, INTERIOR };         // same as Domain
         enum Enum2{ PERIODIC, OUTFLOW, REFLECT, SURFACE, AXISYM };  // same as Domain
         enum Enum3{ UNKNOWN, OUTSIDE, INSIDE, OVERLAP };           // same as Grid
         enum Enum4{ PKEEP, PINSERT, PDONE, PDISCARD, PENTRY, PEXIT, PSURF };   // several files
@@ -287,7 +287,7 @@ namespace cstest
                 //   disallow if any pt of any line/tri in cell touches face
 
                 flag = 0;
-                if (faces[(int)iface]!=0 && sparta.grid.neigh_decode(nmask, iface) == (int)Enum5.NBOUND)
+                if (faces[(int)iface]!=0 && sparta.grid.neigh_decode(nmask, (int)iface) == (int)Enum5.NBOUND)
                 {
                     if (cinfo[icell].type == (int)Enum3.OUTSIDE) flag = 1;
                     else if (cinfo[icell].type == (int)Enum3.OVERLAP)
@@ -360,74 +360,79 @@ namespace cstest
                 task.lo[2] = cells[icell].lo[2];
                 task.hi[2] = cells[icell].hi[2];
                 if (dimension == 2) task.lo[2] = task.hi[2] = 0.0;
+                task.normal = new double[3];
                 task.normal[0] = 0.0;
                 task.normal[1] = 0.0;
                 task.normal[2] = 0.0;
 
-                if (iface == XLO || iface == XHI)
+                if (iface == Enum1.XLO || iface == Enum1.XHI)
                 {
                     task.ndim = 0;
                     task.pdim = 1;
                     task.qdim = 2;
-                    if (iface == XLO) tasks[ntask].hi[0] = cells[icell].lo[0];
+                    if (iface == Enum1.XLO) task.hi[0] = cells[icell].lo[0];
                     else tasks[ntask].lo[0] = cells[icell].hi[0];
-                    if (iface == XLO) tasks[ntask].normal[0] = 1.0;
-                    else tasks[ntask].normal[0] = -1.0;
+                    if (iface == Enum1.XLO) task.normal[0] = 1.0;
+                    else task.normal[0] = -1.0;
                 }
-                else if (iface == YLO || iface == YHI)
+                else if (iface == Enum1.YLO || iface == Enum1.YHI)
                 {
                     task.ndim = 1;
                     task.pdim = 0;
                     task.qdim = 2;
-                    if (iface == YLO) tasks[ntask].hi[1] = cells[icell].lo[1];
-                    else tasks[ntask].lo[1] = cells[icell].hi[1];
-                    if (iface == YLO) tasks[ntask].normal[1] = 1.0;
-                    else tasks[ntask].normal[1] = -1.0;
+                    if (iface == Enum1.YLO) task.hi[1] = cells[icell].lo[1];
+                    else task.lo[1] = cells[icell].hi[1];
+                    if (iface == Enum1.YLO) task.normal[1] = 1.0;
+                    else task.normal[1] = -1.0;
                 }
-                else if (iface == ZLO || iface == ZHI)
+                else if (iface == Enum1.ZLO || iface == Enum1.ZHI)
                 {
                     task.ndim = 2;
                     task.pdim = 0;
                     task.qdim = 1;
-                    if (iface == ZLO) tasks[ntask].hi[2] = cells[icell].lo[2];
-                    else tasks[ntask].lo[2] = cells[icell].hi[2];
-                    if (iface == ZLO) tasks[ntask].normal[2] = 1.0;
-                    else tasks[ntask].normal[2] = -1.0;
+                    if (iface == Enum1.ZLO) task.hi[2] = cells[icell].lo[2];
+                    else task.lo[2] = cells[icell].hi[2];
+                    if (iface == Enum1.ZLO) task.normal[2] = 1.0;
+                    else task.normal[2] = -1.0;
                 }
 
                 // indot = dot product of vstream with inward face normal
 
-                indot = vstream[0] * tasks[ntask].normal[0] +
-                  vstream[1] * tasks[ntask].normal[1] +
-                  vstream[2] * tasks[ntask].normal[2];
+                indot = vstream[0] * task.normal[0] +
+                  vstream[1] * task.normal[1] +
+                  vstream[2] * task.normal[2];
 
                 // area = area for insertion
                 // depends on dimension and axisymmetry
 
-                if (iface == XLO || iface == XHI)
+                if (iface == Enum1.XLO || iface == Enum1.XHI)
                 {
                     if (dimension == 3)
                         area = (cells[icell].hi[1] - cells[icell].lo[1]) *
                           (cells[icell].hi[2] - cells[icell].lo[2]);
-                    else if (domain.axisymmetric)
+                    else if (sparta.domain.axisymmetric!=0)
                         area = (cells[icell].hi[1] * cells[icell].hi[1] -
-                                cells[icell].lo[1] * cells[icell].lo[1]) * MY_PI;
+                                cells[icell].lo[1] * cells[icell].lo[1]) * MyConst.MY_PI;
                     else area = cells[icell].hi[1] - cells[icell].lo[1];
                 }
-                else if (iface == YLO || iface == YHI)
+                else if (iface == Enum1.YLO || iface == Enum1.YHI)
                 {
                     if (dimension == 3)
                         area = (cells[icell].hi[0] - cells[icell].lo[0]) *
                           (cells[icell].hi[2] - cells[icell].lo[2]);
-                    else if (domain.axisymmetric)
-                        area = 2.0 * MY_PI * cells[icell].hi[1] *
+                    else if (sparta.domain.axisymmetric!=0)
+                        area = 2.0 * MyConst.MY_PI * cells[icell].hi[1] *
                           (cells[icell].hi[0] - cells[icell].lo[0]);
                     else area = cells[icell].hi[0] - cells[icell].lo[0];
                 }
-                else if (iface == ZLO || iface == ZHI)
+                else if (iface == Enum1.ZLO || iface == Enum1.ZHI)
                 {
                     area = (cells[icell].hi[0] - cells[icell].lo[0]) *
                   (cells[icell].hi[1] - cells[icell].lo[1]);
+                }
+                else
+                {
+                    area = 0;
                 }
                 task.area = area;
 
@@ -442,14 +447,14 @@ namespace cstest
                     ntargetsp *= nrho * area * dt / fnum;
                     ntargetsp /= cinfo[icell].weight;
                     task.ntarget += ntargetsp;
-                    if (perspecies) tasks[ntask].ntargetsp[isp] = ntargetsp;
+                    if (perspecies!=0) task.ntargetsp[isp] = ntargetsp;
                 }
 
                 if (subsonic==0)
                 {
-                    if (tasks[ntask].ntarget == 0.0) continue;
-                    if (tasks[ntask].ntarget >= MAXSMALLINT)
-                        error.one(FLERR,
+                    if (task.ntarget == 0.0) continue;
+                    if (task.ntarget >= Run.MAXSMALLINT)
+                        sparta.error.one(
                                    "Fix emit/face insertion count exceeds 32-bit int");
                 }
 
@@ -469,26 +474,398 @@ namespace cstest
                 ntask++;
             }
 
-            
 
 
+            // return # of tasks for this cell
+
+            return ntask - ntaskorig;
 
 
         }
-        //protected virtual void perform_task();
-        //protected void perform_task_onepass();
-        //protected virtual void perform_task_twopass();
+        protected override void perform_task()
+        {
+            if (twopass==0) perform_task_onepass();
+            else perform_task_twopass();
+        }
+        protected void perform_task_onepass()
+        {
+            int pcell, ninsert, nactual, isp, ispecies, ndim, pdim, qdim, id;
+            double indot, scosine, rn, ntarget, vr;
+            double beta_un, normalized_distbn_fn, theta, erot, evib;
+            double temp_thermal, temp_rot, temp_vib;
+            double[] x=new double[3], v=new double[3];
+            double[] lo,hi,normal,vstream,vscale;
+            Particle.OnePart p;
 
-        //protected int split(int, int);
+            dt = sparta.update.dt;
+            int[] species = sparta.particle.mixture[imix].species;
 
-        //protected void subsonic_inflow();
-        //protected void subsonic_sort();
+            // if subsonic, re-compute particle inflow counts for each task
+            // also computes current per-task temp_thermal and vstream
+
+            if (subsonic!=0) subsonic_inflow();
+
+            // insert particles for each task = cell/face pair
+            // ntarget/ninsert is either perspecies or for all species
+            // for one particle:
+            //   x = random position on face
+            //   v = randomized thermal velocity + vstream
+            //       first stage: normal dimension (ndim)
+            //       second stage: parallel dimensions (pdim,qdim)
+
+            // double while loop until randomized particle velocity meets 2 criteria
+            // inner do-while loop:
+            //   v = vstream-component + vthermal is into simulation box
+            //   see Bird 1994, p 425
+            // outer do-while loop:
+            //   shift Maxwellian distribution by stream velocity component
+            //   see Bird 1994, p 259, eq 12.5
+
+            int nfix_add_particle = sparta.modify.n_add_particle;
+
+            for (int i = 0; i < ntask; i++)
+            {
+                pcell = tasks[i].pcell;
+                ndim = tasks[i].ndim;
+                pdim = tasks[i].pdim;
+                qdim = tasks[i].qdim;
+                lo = tasks[i].lo;
+                hi = tasks[i].hi;
+                normal = tasks[i].normal;
+
+                temp_thermal = tasks[i].temp_thermal;
+                temp_rot = tasks[i].temp_rot;
+                temp_vib = tasks[i].temp_vib;
+                vstream = tasks[i].vstream;
+
+                if (subsonic_style ==(int)Enum6.PONLY) vscale = tasks[i].vscale;
+                else vscale = sparta.particle.mixture[imix].vscale;
+
+                indot = vstream[0] * normal[0] + vstream[1] * normal[1] + vstream[2] * normal[2];
+
+                if (perspecies!=0)
+                {
+                    for (isp = 0; isp < nspecies; isp++)
+                    {
+                        ispecies = species[isp];
+                        ntarget = tasks[i].ntargetsp[isp] + random.uniform();
+                        ninsert = Convert.ToInt32(ntarget);
+                        scosine = indot / vscale[isp];
+
+                        nactual = 0;
+                        for (int m = 0; m < ninsert; m++)
+                        {
+                            x[0] = lo[0] + random.uniform() * (hi[0] - lo[0]);
+                            x[1] = lo[1] + random.uniform() * (hi[1] - lo[1]);
+                            if (dimension == 3) x[2] = lo[2] + random.uniform() * (hi[2] - lo[2]);
+                            else x[2] = 0.0;
+
+                            if (region!=null && region.match(x)==0) continue;
+
+                            do
+                            {
+                                do beta_un = (6.0 * random.uniform() - 3.0);
+                                while (beta_un + scosine < 0.0);
+                                normalized_distbn_fn = 2.0 * (beta_un + scosine) /
+                                  (scosine + Math.Sqrt(scosine * scosine + 2.0)) *
+                                  Math.Exp(0.5 + (0.5 * scosine) * (scosine - Math.Sqrt(scosine * scosine + 2.0)) -
+                                  beta_un * beta_un);
+                            } while (normalized_distbn_fn < random.uniform());
+
+                            v[ndim] = beta_un * vscale[isp] * normal[ndim] + vstream[ndim];
+
+                            theta = MyConst.MY_2PI * random.uniform();
+                            vr = vscale[isp] * Math.Sqrt(-Math.Log(random.uniform()));
+                            v[pdim] = vr * Math.Sin(theta) + vstream[pdim];
+                            v[qdim] = vr * Math.Cos(theta) + vstream[qdim];
+                            erot = sparta.particle.erot(ispecies, temp_rot, random);
+                            evib = sparta.particle.evib(ispecies, temp_vib, random);
+                            id = (int)(Run.MAXSMALLINT * random.uniform());
+
+                            sparta.particle.add_particle(id, ispecies, pcell, x, v, erot, evib);
+                            nactual++;
+
+                            p = sparta.particle.particles[sparta.particle.nlocal - 1];
+                            p.flag = (int)Enum4.PINSERT;
+                            p.dtremain = dt * random.uniform();
+
+                            if (nfix_add_particle != 0)
+                                sparta.modify.add_particle(sparta.particle.nlocal - 1, temp_thermal,
+                                                     temp_rot, temp_vib, vstream);
+                        }
+
+                        nsingle += nactual;
+                    }
+
+                }
+                else
+                {
+                    if (np == 0)
+                    {
+                        ntarget = tasks[i].ntarget + random.uniform();
+                        ninsert = Convert.ToInt32(ntarget);
+                    }
+                    else
+                    {
+                        ninsert = npertask;
+                        if (i >= nthresh) ninsert++;
+                    }
+
+                    nactual = 0;
+                    for (int m = 0; m < ninsert; m++)
+                    {
+                        rn = random.uniform();
+                        isp = 0;
+                        while (cummulative[isp] < rn) isp++;
+                        ispecies = species[isp];
+                        scosine = indot / vscale[isp];
+
+                        x[0] = lo[0] + random.uniform() * (hi[0] - lo[0]);
+                        x[1] = lo[1] + random.uniform() * (hi[1] - lo[1]);
+                        if (dimension == 3) x[2] = lo[2] + random.uniform() * (hi[2] - lo[2]);
+                        else x[2] = 0.0;
+
+                        if (region!=null && region.match(x)==0) continue;
+
+                        do
+                        {
+                            do
+                            {
+                                beta_un = (6.0 * random.uniform() - 3.0);
+                            } while (beta_un + scosine < 0.0);
+                            normalized_distbn_fn = 2.0 * (beta_un + scosine) /
+                              (scosine + Math.Sqrt(scosine * scosine + 2.0)) *
+                              Math.Exp(0.5 + (0.5 * scosine) * (scosine - Math.Sqrt(scosine * scosine + 2.0)) -
+                              beta_un * beta_un);
+                        } while (normalized_distbn_fn < random.uniform());
+
+                        v[ndim] = beta_un * vscale[isp] * normal[ndim] + vstream[ndim];
+
+                        theta = MyConst.MY_2PI * random.uniform();
+                        vr = vscale[isp] * Math.Sqrt(-Math.Log(random.uniform()));
+                        v[pdim] = vr * Math.Sin(theta) + vstream[pdim];
+                        v[qdim] = vr * Math.Cos(theta) + vstream[qdim];
+                        erot = sparta.particle.erot(ispecies, temp_rot, random);
+                        evib = sparta.particle.evib(ispecies, temp_vib, random);
+                        id = (int)(Run.MAXSMALLINT * random.uniform());
+
+                        sparta.particle.add_particle(id, ispecies, pcell, x, v, erot, evib);
+                        nactual++;
+
+                        p = sparta.particle.particles[sparta.particle.nlocal - 1];
+                        p.flag = (int)Enum4.PINSERT;
+                        p.dtremain = dt * random.uniform();
+
+                        if (nfix_add_particle!=0)
+                            sparta.modify.add_particle(sparta.particle.nlocal - 1, temp_thermal,
+                                                 temp_rot, temp_vib, vstream);
+                    }
+
+                    nsingle += nactual;
+                }
+            }
+        }
+        protected virtual void perform_task_twopass();
+
+        protected int split(int icell, Enum1 iface)
+        {
+            double[] x=new double[3];
+            
+            Grid.ChildCell[] cells = sparta.grid.cells;
+
+            // x = center point on face
+
+            x[0] = 0.5 * (cells[icell].lo[0] + cells[icell].hi[0]);
+            x[1] = 0.5 * (cells[icell].lo[1] + cells[icell].hi[1]);
+            x[2] = 0.5 * (cells[icell].lo[2] + cells[icell].hi[2]);
+            if (sparta.domain.dimension == 2) x[2] = 0.0;
+
+            if (iface == Enum1.XLO) x[0] = cells[icell].lo[0];
+            else if (iface == Enum1.XHI) x[0] = cells[icell].hi[0];
+            else if (iface == Enum1.YLO) x[1] = cells[icell].lo[1];
+            else if (iface == Enum1.YHI) x[1] = cells[icell].hi[1];
+            else if (iface == Enum1.ZLO) x[2] = cells[icell].lo[2];
+            else if (iface == Enum1.ZHI) x[2] = cells[icell].hi[2];
+
+            int splitcell;
+            if (dimension == 2) splitcell = sparta.update.split2d(icell, x);
+            else splitcell = sparta.update.split3d(icell, x);
+            return splitcell;
+        }
+
+        protected void subsonic_inflow()
+        {
+            // for grid cells that are part of tasks:
+            // calculate local nrho, vstream, and thermal temperature
+            // if needed sort particles for grid cells with tasks
+
+            if (sparta.particle.sorted==0) subsonic_sort();
+            subsonic_grid();
+
+            // recalculate particle insertion counts for each task
+            // recompute mixture vscale, since depends on temp_thermal
+
+            int isp, icell;
+            double mass, indot, area, nrho, temp_thermal, vscale, ntargetsp;
+            double[] vstream,normal;
+
+            List<Particle.Species> species = sparta.particle.species;
+            Grid.ChildInfo[] cinfo = sparta.grid.cinfo;
+            int[] mspecies = sparta.particle.mixture[imix].species;
+            double fnum = sparta.update.fnum;
+            double boltz = sparta.update.boltz;
+
+            for (int i = 0; i < ntask; i++)
+            {
+                Task task = tasks[i];
+                vstream = task.vstream;
+                normal = task.normal;
+                indot = vstream[0] * normal[0] + vstream[1] * normal[1] + vstream[2] * normal[2];
+
+                area = task.area;
+                nrho = task.nrho;
+                temp_thermal = task.temp_thermal;
+                icell = task.icell;
+
+                task.ntarget = 0.0;
+                for (isp = 0; isp < nspecies; isp++)
+                {
+                    mass = species[mspecies[isp]].mass;
+                    vscale = Math.Sqrt(2.0 * boltz * temp_thermal / mass);
+                    ntargetsp = mol_inflow(indot, vscale, fraction[isp]);
+                    ntargetsp *= nrho * area * dt / fnum;
+                    ntargetsp /= cinfo[icell].weight;
+                    task.ntarget += ntargetsp;
+                    if (perspecies!=0) task.ntargetsp[isp] = ntargetsp;
+                }
+                if (task.ntarget >= Run.MAXSMALLINT)
+                    sparta.error.one(
+                               "Fix emit/face subsonic insertion count exceeds 32-bit int");
+                tasks[i] = task;
+            }
+        }
+        protected void subsonic_sort()
+        {
+            int i, icell;
+
+            // initialize particle sort lists for grid cells assigned to tasks
+            // use task pcell, not icell
+
+            Grid.ChildInfo[] cinfo = sparta.grid.cinfo;
+
+            for (i = 0; i < ntask; i++)
+            {
+                icell = tasks[i].pcell;
+                cinfo[icell].first = -1;
+                cinfo[icell].count = 0;
+            }
+
+            // reallocate particle next list if necessary
+
+            sparta.particle.sort_allocate();
+
+            // update list of active grid cells if necessary
+            // active cells = those assigned to tasks
+            // active_current flag set by parent class
+
+            if (active_current==0)
+            {
+                if (sparta.grid.nlocal > maxactive)
+                {
+                    maxactive = sparta.grid.nlocal;
+                    //memory->create(activecell, maxactive, "emit/face:active");
+                    activecell = new int[maxactive];
+                }
+                //memset(activecell, 0, maxactive * sizeof(int));
+                for (i = 0; i < ntask; i++) activecell[tasks[i].pcell] = 1;
+                active_current = 1;
+            }
+
+            // loop over particles to store linked lists for active cells
+            // not using reverse loop like Particle::sort(),
+            //   since this should only be created/used occasionally
+
+            Particle.OnePart[] particles = sparta.particle.particles;
+            int[] next = sparta.particle.next;
+            int nlocal = sparta.particle.nlocal;
+
+            for (i = 0; i < nlocal; i++)
+            {
+                icell = particles[i].icell;
+                if (activecell[icell]==0) continue;
+                next[i] = cinfo[icell].first;
+                cinfo[icell].first = i;
+                cinfo[icell].count++;
+            }
+        }
         //protected void subsonic_grid();
 
         //protected virtual int pack_task(int, char*, int);
         //protected virtual int unpack_task(char*, int);
         //protected virtual void copy_task(int, int, int, int);
-        //protected virtual void grow_task();
+        protected virtual void grow_task()
+        {
+            int oldmax = ntaskmax;
+            ntaskmax += DELTATASK;
+            if (tasks!=null)
+            {
+                tasks.Capacity = ntaskmax;
+            }
+            else
+            {
+                tasks = new List<Task>(ntaskmax);
+            }
+
+            //tasks = (Task*)memory->srealloc(tasks, ntaskmax * sizeof(Task),
+            //                  "emit/face:tasks");
+
+            // set all new task bytes to 0 so valgrind won't complain
+            // if bytes between fields are uninitialized
+
+            //memset(&tasks[oldmax], 0, (ntaskmax - oldmax) * sizeof(Task));
+
+            // allocate vectors in each new task or set to NULL
+
+            if (perspecies!=0)
+            {
+                for (int i = oldmax; i < ntaskmax; i++)
+                {
+                    Task task=new Task();
+                    task.ntargetsp = new double[nspecies];
+                    tasks.Add(task);
+                }
+
+                
+            }
+            else
+            {
+                for (int i = oldmax; i < ntaskmax; i++)
+                {
+                    Task task = new Task();
+                    task.ntargetsp = null;
+                    tasks.Add(task);
+                }
+            }
+
+            if (subsonic_style == (int)Enum6.PONLY)
+            {
+                for (int i = oldmax; i < ntaskmax; i++)
+                {
+                    Task task = tasks[i];
+                    task.vscale = new double[nspecies];
+                    tasks[i] = task;
+                }
+            }
+            else
+            {
+                for (int i = oldmax; i < ntaskmax; i++)
+                {
+                    Task task = tasks[i];
+                    task.vscale = null;
+                    tasks[i] = task;
+                }
+            }
+        }
         protected virtual void realloc_nspecies()
         {
             if (perspecies!=0)

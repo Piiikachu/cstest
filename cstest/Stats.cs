@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using bigint = System.Int64;
 namespace cstest
 {
@@ -34,7 +35,7 @@ namespace cstest
             sparta.mpi.MPI_Barrier(sparta.world);
             wall0 = sparta.mpi.MPI_Wtime();
 
-            line = new char[MAXLINE];
+            //line = new char[MAXLINE];
 
             keyword = null;
             //vfunc = null;
@@ -278,11 +279,96 @@ namespace cstest
 
 
         }
-        //public void header();
-        //public void compute(int);
+        public void header()
+        {
+            for (int i = 0; i < nfield; i++)
+            {
+                line += keyword[i]+" ";
+                
+            }
+
+            line += "\n";
+
+            if (me == 0)
+            {
+                System.Console.WriteLine(line);
+                if (sparta.screen!=null) new StreamWriter(sparta.screen).WriteLine(line);
+                if (sparta.logfile!=null) new StreamWriter(sparta.logfile).WriteLine(line);
+            }
+        }
+        public void compute(int flag)
+        {
+            int i;
+
+            firststep = flag;
+
+            // invoke Compute methods needed for stats keywords
+
+            for (i = 0; i < ncompute; i++)
+                if (compute_which[i] == (int)Enum2.SCALAR)
+                {
+                    if ((computes[i].invoked_flag & INVOKED_SCALAR)==0)
+                    {
+                        computes[i].compute_scalar();
+                        computes[i].invoked_flag |= INVOKED_SCALAR;
+                    }
+                }
+                else if (compute_which[i] == (int)Enum2.VECTOR)
+                {
+                    if ((computes[i].invoked_flag & INVOKED_VECTOR)==0)
+                    {
+                        computes[i].compute_vector();
+                        computes[i].invoked_flag |= INVOKED_VECTOR;
+                    }
+                }
+                else if (compute_which[i] == (int)Enum2.ARRAY)
+                {
+                    if ((computes[i].invoked_flag & INVOKED_ARRAY)==0)
+                    {
+                        computes[i].compute_array();
+                        computes[i].invoked_flag |= INVOKED_ARRAY;
+                    }
+                }
+
+            // add each stat value to line with its specific format
+
+            for (ifield = 0; ifield < nfield; ifield++)
+            {
+                vfunc[ifield]();
+                format[ifield] = " {0} ";
+                if (vtype[ifield] == (int)Enum1.FLOAT)
+                {
+                    string str = string.Format(format[ifield], dvalue);
+                    line += str;
+                }
+                else if (vtype[ifield] == (int)Enum1.INT)
+                {
+                    string str = string.Format(format[ifield], ivalue);
+                    line += str;
+                }
+                else if (vtype[ifield] == (int)Enum1.BIGINT)
+                {
+                    string str = string.Format(format[ifield], bivalue);
+                    line += str;
+                }
+            }
+
+            // print line to screen and logfile
+
+            if (me == 0)
+            {
+                System.Console.WriteLine(line);
+                if (sparta.screen!=null) new StreamWriter(sparta.screen).WriteLine(line);
+                if (sparta.logfile!=null)
+                {
+                    new StreamWriter(sparta.screen).WriteLine(line);
+                    if (flushflag!=0) sparta.logfile.Flush();
+                }
+            }
+        }
         //public int evaluate_keyword(string, double*);
 
-        private char[] line;
+        private string line;
         private string[] keyword;
         private int[] vtype;
 

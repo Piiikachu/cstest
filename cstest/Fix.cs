@@ -100,7 +100,7 @@ namespace cstest
         }
         public virtual void setup() { System.Console.WriteLine("fix virtual setup"); }
 
-        //public virtual void start_of_step() { }
+        public virtual void start_of_step() { System.Console.WriteLine("fix virtual start_of_step"); }
         //public virtual void end_of_step() { }
         //public virtual void add_particle(int, double, double, double, double[]) { }
         //public virtual void gas_react(int) { }
@@ -116,6 +116,10 @@ namespace cstest
         //public virtual double compute_vector(int) { return 0.0; }
         //public virtual double compute_array(int, int) { return 0.0; }
 
-        //public virtual double memory_usage() { return 0.0; }
+        public virtual double memory_usage()
+        {
+            System.Console.WriteLine("Fix virtual memory_usage");
+            return 0.0;
+        }
     }
 }

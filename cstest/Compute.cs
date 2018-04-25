@@ -162,11 +162,25 @@ namespace cstest
             tlist[i] = ntimestep;
             ntime++;
         }
-        //public int matchstep(bigint);
+        public int matchstep(bigint ntimestep)
+        {
+            for (int i = ntime - 1; i >= 0; i--)
+            {
+                if (ntimestep < tlist[i]) return 0;
+                if (ntimestep == tlist[i]) return 1;
+                if (ntimestep > tlist[i]) ntime--;
+            }
+            return 0;
+        }
         //public void clearstep();
 
         //public virtual void reallocate() { }
-        //public virtual bigint memory_usage();
+        public virtual bigint memory_usage()
+        {
+            System.Console.WriteLine("virtual.memory_usage");
+            bigint bytes = 0;
+            return bytes;
+        }
 
     }
 }

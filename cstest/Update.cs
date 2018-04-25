@@ -212,7 +212,77 @@ namespace cstest
             sparta.modify.setup();
             sparta.output.setup(1);
         }
-        //      public virtual void run(int);
+        public virtual void run(int nsteps)
+        {
+            int n_start_of_step = sparta.modify.n_start_of_step;
+            int n_end_of_step = sparta.modify.n_end_of_step;
+            //int dynamic = 0;
+
+            // cellweightflag = 1 if grid-based particle weighting is ON
+
+            int cellweightflag = 0;
+            if (sparta.grid.cellweightflag!=0) cellweightflag = 1;
+
+            // loop over timesteps
+
+            for (int i = 0; i < nsteps; i++)
+            {
+
+                ntimestep++;
+                if (collide_react!=0) collide_react_update();
+                if (bounce_tally!=0) bounce_set(ntimestep);
+
+                sparta.timer.stamp();
+
+                // start of step fixes
+
+                if (n_start_of_step!=0)
+                {
+                    sparta.modify.start_of_step();
+                    sparta.timer.stamp((int)Timer.Enum1.TIME_MODIFY);
+                }
+
+                //if (dynamic) domain.dynamic();
+
+                // move particles
+
+                if (cellweightflag != 0) sparta.particle.pre_weight();
+                //moveptr();
+                move(moveptr[0], moveptr[1]);
+                sparta.timer.stamp((int)Timer.Enum1.TIME_MOVE);
+
+                // communicate particles
+
+                sparta.comm.migrate_particles(nmigrate, mlist);
+                if (cellweightflag != 0) sparta.particle.post_weight();
+                sparta.timer.stamp((int)Timer.Enum1.TIME_COMM);
+
+                if (sparta.collide != null)
+                {
+                    sparta.particle.sort();
+                    sparta.timer.stamp((int)Timer.Enum1.TIME_SORT);
+
+                    sparta.collide.collisions();
+                    sparta.timer.stamp((int)Timer.Enum1.TIME_COLLIDE);
+                }
+
+                // diagnostic fixes
+
+                if (n_end_of_step!=0)
+                {
+                    sparta.modify.end_of_step();
+                    sparta.timer.stamp((int)Timer.Enum1.TIME_MODIFY);
+                }
+
+                // all output
+
+                if (ntimestep == sparta.output.next)
+                {
+                    sparta.output.write(ntimestep);
+                    sparta.timer.stamp((int)Timer.Enum1.TIME_OUTPUT);
+                }
+            }
+        }
         public void global(int nnarg, string[] arg)
         {
             int narg = nnarg + 1;
@@ -510,7 +580,10 @@ namespace cstest
             if (sc!=null || sr != null) return 1;
             return 0;
         }
-        //      void collide_react_update();
+        void collide_react_update()
+        {
+            Console.WriteLine("Update.collide_react_update");
+        }
 
         int bounce_setup()
         {
@@ -540,7 +613,32 @@ namespace cstest
             nsurf_tally = nboundary_tally = 0;
             return 0;
         }
-        //      void bounce_set(bigint);
+        void bounce_set(bigint ntimestep)
+        {
+            int i;
+
+            nsurf_tally = 0;
+            if (nslist_compute!=0)
+            {
+                for (i = 0; i < nslist_compute; i++)
+                    if (slist_compute[i].matchstep(ntimestep)!=0)
+                    {
+                        slist_active[nsurf_tally++] = slist_compute[i];
+                        slist_compute[i].clear();
+                    }
+            }
+
+            nboundary_tally = 0;
+            if (nblist_compute != 0)
+            {
+                for (i = 0; i < nblist_compute; i++)
+                    if (blist_compute[i].matchstep(ntimestep)!=0)
+                    {
+                        blist_active[nboundary_tally++] = blist_compute[i];
+                        blist_compute[i].clear();
+                    }
+            }
+        }
         //      void reset_timestep(bigint);
 
         //      //int axi_vertical_line(double, double *, double *, double, double, double,

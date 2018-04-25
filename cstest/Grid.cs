@@ -1488,7 +1488,17 @@ namespace cstest
         //      public int pack_restart(char*);
         //      public int unpack_restart(char*);
 
-        //      public bigint memory_usage();
+        public bigint memory_usage()
+        {
+            bigint bytes = maxcell * Marshal.SizeOf(typeof(ChildCell));
+            bytes += maxlocal * Marshal.SizeOf(typeof(ChildInfo));
+            bytes += maxsplit * Marshal.SizeOf(typeof(SplitInfo));
+            bytes += nparent * Marshal.SizeOf(typeof(ParentCell));
+            bytes += csurfs.size();
+            bytes += csplits.size();
+
+            return bytes;
+        }
 
         //      public void debug();
 
@@ -1507,7 +1517,7 @@ namespace cstest
         //      // extract/return neighbor flag for iface from per-cell nmask
         //      // inlined for efficiency
 
-        int neigh_decode(int nmask, int iface)
+        public int neigh_decode(int nmask, int iface)
         {
             return (nmask & neighmask[iface]) >> neighshift[iface];
         }

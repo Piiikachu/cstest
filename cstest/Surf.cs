@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using bigint = System.Int64;
 namespace cstest
 {
@@ -597,7 +598,15 @@ namespace cstest
 
         //public void write_restart(FILE*);
         //public void read_restart(FILE*);
-        //public bigint memory_usage();
+        public bigint memory_usage()
+        {
+            bigint bytes = 0;
+            bytes += (bigint)npoint * Marshal.SizeOf(typeof(Point));
+            bytes += (bigint)nline * Marshal.SizeOf(typeof(Line));
+            bytes += (bigint)ntri * Marshal.SizeOf(typeof(Tri));
+            bytes += nlocal * sizeof(int);
+            return bytes;
+        }
 
         //private:
         private int maxsc;                // max # of models in sc

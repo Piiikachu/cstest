@@ -138,7 +138,7 @@ namespace cstest
             }
 
             // if nevery, make copies of arg strings that are commands
-            // required because re-parsing commands via input->one() will wipe out args
+            // required because re-parsing commands via input.one() will wipe out args
 
             string[] commands = null;
             if (nevery != 0 && ncommands > 0)
@@ -181,6 +181,19 @@ namespace cstest
                 }
                 else sparta.output.setup(0);
 
+                sparta.timer.init();
+                sparta.timer.barrier_start((int)Timer.Enum1.TIME_LOOP);
+                sparta.update.run(nsteps);
+                sparta.timer.barrier_stop(TIME_LOOP);
+
+                Finish finish(sparta);
+                finish.end(postflag, 0.0);
+
+                // perform multiple runs optionally interleaved with invocation command(s)
+                // use start/stop to set begin/end step
+                // if pre or 1st iteration of multiple runs, do System init/setup,
+                //   else just init timer and setup output
+                // if post or last iteration, do full Finish, else just print time
 
             }
         }

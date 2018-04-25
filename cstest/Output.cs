@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using bigint = System.Int64;
 
 namespace cstest
@@ -169,6 +170,78 @@ namespace cstest
             // set next_restart values to multiple of every or variable value
             // wrap variable eval with clear/add
             // if no restarts, set next_restart to last+1 so will not influence next
+
+            if (restart_flag!=0)
+            {
+                if (restart_flag_single != 0)
+                {
+                    if (restart_every_single != 0)
+                        next_restart_single =
+                          (ntimestep / restart_every_single) * restart_every_single +
+                          restart_every_single;
+                    else
+                    {
+                        bigint nextrestart = Convert.ToInt64
+                          (sparta.input.variable.compute_equal(ivar_restart_single));
+                        if (nextrestart <= ntimestep)
+                            sparta.error.all("Restart variable returned a bad timestep");
+                        next_restart_single = nextrestart;
+                    }
+                }
+                else next_restart_single = sparta.update.laststep + 1;
+                if (restart_flag_double != 0)
+                {
+                    if (restart_every_double != 0)
+                        next_restart_double =
+                          (ntimestep / restart_every_double) * restart_every_double +
+                          restart_every_double;
+                    else
+                    {
+                        bigint nextrestart = Convert.ToInt64
+                          (sparta.input.variable.compute_equal(ivar_restart_double));
+                        if (nextrestart <= ntimestep)
+                            sparta.error.all("Restart variable returned a bad timestep");
+                        next_restart_double = nextrestart;
+                    }
+                }
+                else next_restart_double = sparta.update.laststep + 1;
+                next_restart = Math.Min(next_restart_single, next_restart_double);
+            }
+            else next_restart = sparta.update.laststep + 1;
+
+            // print memory usage unless being called between multiple runs
+            if (memflag != 0) memory_usage();
+
+            // set next_stats to multiple of every or variable eval if var defined
+            // insure stats output on last step of run
+            // stats may invoke computes so wrap with clear/add
+
+            sparta.modify.clearstep_compute();
+
+            stats.header();
+            stats.compute(0);
+            last_stats = ntimestep;
+
+            if (var_stats!=null)
+            {
+                next_stats = Convert.ToInt64
+                  (sparta.input.variable.compute_equal(ivar_stats));
+                if (next_stats <= ntimestep)
+                    sparta.error.all("Stats every variable returned a bad timestep");
+            }
+            else if (stats_every!=0)
+            {
+                next_stats = (ntimestep / stats_every) * stats_every + stats_every;
+                next_stats = Math.Min(next_stats, sparta.update.laststep);
+            }
+            else next_stats = sparta.update.laststep;
+
+            sparta.modify.addstep_compute(next_stats);
+
+            // next = next timestep any output will be done
+
+            next = Math.Min(next_dump_any, next_restart);
+            next = Math.Min(next, next_stats);
         }
         //public void write(bigint);                // output for current timestep
         //public void write_dump(bigint);           // force output of dump snapshots
@@ -210,7 +283,69 @@ namespace cstest
 
         }
         //public void create_restart(int, char**); // create Restart and restart files
-        
-        //public void memory_usage();               // print out memory usage
+
+        public void memory_usage()               // print out memory usage
+        {
+            bigint pbytes, gbytes, sbytes, bytes;
+            pbytes = sparta.particle.memory_usage();
+            gbytes = sparta.grid.memory_usage();
+            sbytes = sparta.surf.memory_usage();
+            bytes = pbytes + gbytes + sbytes;
+            bytes += sparta.modify.memory_usage();
+
+            double scale = 1.0 / 1024.0 / 1024.0;
+
+            bigint ave=0, min=0, max=0;
+
+            sparta.mpi.MPI_Allreduce(ref pbytes, ref ave, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            double pave = scale * ave / sparta.comm.nprocs;
+            sparta.mpi.MPI_Allreduce(ref pbytes, ref min, 1, MPI.MPI_LONG_LONG, MPI.MPI_MIN, sparta.world);
+            double pmin = scale * min;
+            sparta.mpi.MPI_Allreduce(ref pbytes, ref max, 1, MPI.MPI_LONG_LONG, MPI.MPI_MAX, sparta.world);
+            double pmax = scale * max;
+
+            sparta.mpi.MPI_Allreduce(ref gbytes, ref ave, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            double gave = scale * ave / sparta.comm.nprocs;
+            sparta.mpi.MPI_Allreduce(ref gbytes, ref min, 1, MPI.MPI_LONG_LONG, MPI.MPI_MIN, sparta.world);
+            double gmin = scale * min;
+            sparta.mpi.MPI_Allreduce(ref gbytes, ref max, 1, MPI.MPI_LONG_LONG, MPI.MPI_MAX, sparta.world);
+            double gmax = scale * max;
+
+            sparta.mpi.MPI_Allreduce(ref sbytes, ref ave, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            double save = scale * ave / sparta.comm.nprocs;
+            sparta.mpi.MPI_Allreduce(ref sbytes, ref min, 1, MPI.MPI_LONG_LONG, MPI.MPI_MIN, sparta.world);
+            double smin = scale * min;
+            sparta.mpi.MPI_Allreduce(ref sbytes, ref max, 1, MPI.MPI_LONG_LONG, MPI.MPI_MAX, sparta.world);
+            double smax = scale * max;
+
+            sparta.mpi.MPI_Allreduce(ref bytes, ref ave, 1, MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
+            double tave = scale * ave / sparta.comm.nprocs;
+            sparta.mpi.MPI_Allreduce(ref bytes, ref min, 1, MPI.MPI_LONG_LONG, MPI.MPI_MIN, sparta.world);
+            double tmin = scale * min;
+            sparta.mpi.MPI_Allreduce(ref bytes, ref max, 1, MPI.MPI_LONG_LONG, MPI.MPI_MAX, sparta.world);
+            double tmax = scale * max;
+
+            if (sparta.comm.me == 0)
+            {
+                string str1 = string.Format("Memory usage per proc in Mbytes:\n");
+                string str2 = string.Format("  particles (ave,min,max) = {0} {1} {2}\n",
+                        pave, pmin, pmax);
+                string str3 = string.Format("  grid      (ave,min,max) = {0} {1} {2}\n",
+                        gave, gmin, gmax);
+                string str4 = string.Format("  surf      (ave,min,max) = {0} {1} {2}\n",
+                        save, smin, smax);
+                string str5 = string.Format("  total     (ave,min,max) = {0} {1} {2}\n",
+                        tave, tmin, tmax);
+                Console.WriteLine(str1 + str2 + str3 + str4 + str5);
+                if (sparta.screen!=null)
+                {
+                    new StreamWriter(sparta.screen).WriteLine(str1+str2+str3+str4+str5);
+                }
+                if (sparta.logfile!=null)
+                {
+                    new StreamWriter(sparta.logfile).WriteLine(str1 + str2 + str3 + str4 + str5);
+                }
+            }
+        }
     }
 }

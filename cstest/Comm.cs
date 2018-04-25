@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Text;
 using bigint = System.Int64;
 using MPI_Request = System.Int32;
@@ -7,7 +8,7 @@ namespace cstest
     public delegate void callbackHandler(int nsize,StringBuilder buf);
     public class Comm
     {
-        
+        enum Enum1{ PKEEP, PINSERT, PDONE, PDISCARD, PENTRY, PEXIT, PSURF };   // several files
         public int me, nprocs;                    // proc info
         public bigint ncomm;                     // dummy statistic for now
          
@@ -51,7 +52,129 @@ namespace cstest
 
             iparticle.create_procs(nneigh, neighlist, commsortflag);
         }
-        //public int migrate_particles(int, int*);
+        public int migrate_particles(int nmigrate, int[] plist)
+        {
+            //int i, j;
+
+            //Grid.ChildCell[] cells = sparta.grid.cells;
+            //Particle.OnePart[] particles = sparta.particle.particles;
+
+            //int ncustom = sparta.particle.ncustom;
+            //int nbytes_particle = Marshal.SizeOf(typeof(Particle.OnePart));
+            //int nbytes_custom = sparta.particle.sizeof_custom();
+            //int nbytes = nbytes_particle + nbytes_custom;
+
+            //// grow pproc and sbuf if necessary
+
+            //if (nmigrate > maxpproc)
+            //{
+            //    maxpproc = nmigrate;
+            //    //memory->destroy(pproc);
+            //    //memory->create(pproc, maxpproc, "comm:pproc");
+            //    pproc = new int[maxpproc];
+
+            //}
+            //if (nmigrate * nbytes > maxsendbuf)
+            //{
+            //    maxsendbuf = nmigrate * nbytes;
+            //    //memory->destroy(sbuf);
+            //    //memory->create(sbuf, maxsendbuf, "comm:sbuf");
+            //    sbuf = new char[maxsendbuf];
+            //}
+
+            //// fill proclist with procs to send to
+            //// pack sbuf with particles to migrate
+            //// if flag == PDISCARD, particle is deleted but not sent
+            //// change icell of migrated particle to owning cell on receiving proc
+            //// nsend = particles that actually migrate
+            //// if no custom attributes, pack particles directly via memcpy()
+            //// else pack_custom() performs packing into sbuf
+
+            //int nsend = 0;
+            //int offset = 0;
+
+            //if (ncustom==0)
+            //{
+            //    for (i = 0; i < nmigrate; i++)
+            //    {
+            //        j = plist[i];
+            //        if (particles[j].flag == (int)Enum1.PDISCARD) continue;
+            //        pproc[nsend++] = cells[particles[j].icell].proc;
+            //        particles[j].icell = cells[particles[j].icell].ilocal;
+            //        memcpy(&sbuf[offset], &particles[j], nbytes_particle);
+            //        offset += nbytes_particle;
+            //    }
+            //}
+            //else
+            //{
+            //    for (i = 0; i < nmigrate; i++)
+            //    {
+            //        j = plist[i];
+            //        if (particles[j].flag == (int)Enum1.PDISCARD) continue;
+            //        pproc[nsend++] = cells[particles[j].icell].proc;
+            //        particles[j].icell = cells[particles[j].icell].ilocal;
+            //        memcpy(&sbuf[offset], &particles[j], nbytes_particle);
+            //        offset += nbytes_particle;
+            //        sparta.particle.pack_custom(j, &sbuf[offset]);
+            //        offset += nbytes_custom;
+            //    }
+            //}
+
+            //// compress my list of particles
+
+            //sparta.particle.compress_migrate(nmigrate, plist);
+            //int ncompress = sparta.particle.nlocal;
+
+            //// create or augment irregular communication plan
+            //// nrecv = # of incoming particles
+
+            //int nrecv;
+            //if (neighflag!=0)
+            //    nrecv = sparta.particle.augment_data_uniform(nsend, pproc);
+            //else
+            //    nrecv = sparta.particle.create_data_uniform(nsend, pproc, commsortflag);
+
+            //// extend particle list if necessary
+
+            //sparta.particle.grow(nrecv);
+
+            //// perform irregular communication
+            //// if no custom attributes, append recv particles directly to particle list
+            //// else receive into rbuf, unpack particles one by one via unpack_custom()
+
+            //if (ncustom==0)
+            //    sparta.particle.
+            //      exchange_uniform(sbuf, nbytes,
+            //                       (char*)&sparta.particle.particles[sparta.particle.nlocal]);
+
+            //else
+            //{
+            //    if (nrecv * nbytes > maxrecvbuf)
+            //    {
+            //        maxrecvbuf = nrecv * nbytes;
+            //        memory->destroy(rbuf);
+            //        memory->create(rbuf, maxrecvbuf, "comm:rbuf");
+            //    }
+
+            //    sparta.particle.exchange_uniform(sbuf, nbytes, rbuf);
+
+            //    offset = 0;
+            //    int nlocal = sparta.particle.nlocal;
+            //    for (i = 0; i < nrecv; i++)
+            //    {
+            //        memcpy(&sparta.particle.particles[nlocal], &rbuf[offset], nbytes_particle);
+            //        offset += nbytes_particle;
+            //        sparta.particle.unpack_custom(&rbuf[offset], nlocal);
+            //        offset += nbytes_custom;
+            //        nlocal++;
+            //    }
+            //}
+
+            //sparta.particle.nlocal += nrecv;
+            //ncomm += nsend;
+            //return ncompress;
+            Console.WriteLine("comm.migrate_particles");
+        }
         public virtual void migrate_cells(int nmigrate)
         {
             int i, n;

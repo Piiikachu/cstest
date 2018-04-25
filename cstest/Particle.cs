@@ -139,12 +139,12 @@ namespace cstest
             // reallocate cellcount and first lists as needed
             // NOTE: when grid becomes dynamic, will need to do this in sort()
 
-            //if (maxgrid < grid->nlocal) {
-            //  maxgrid = grid->nlocal;
-            //    memory->destroy(cellcount);
-            //memory->destroy(first);
-            //memory->create(first,maxgrid,"particle:first");
-            //memory->create(cellcount,maxgrid,"particle:cellcount");
+            //if (maxgrid < sparta.grid.nlocal) {
+            //  maxgrid = sparta.grid.nlocal;
+            //    memory.destroy(cellcount);
+            //memory.destroy(first);
+            //memory.create(first,maxgrid,"particle:first");
+            //memory.create(cellcount,maxgrid,"particle:cellcount");
             // }
         }
         //public virtual void compress_migrate(int, int*);
@@ -232,7 +232,16 @@ namespace cstest
                 //cellcount[icell]++;
             }
         }
-        //public void sort_allocate();
+        public void sort_allocate()
+        {
+            if (maxsort < maxlocal)
+            {
+                maxsort = maxlocal;
+                //memory.destroy(next);
+                //memory.create(next, maxsort, "particle:next");
+                next = new int[maxsort];
+            }
+        }
         public void remove_all_from_cell(int ip)
         {
             while (ip >= 0)
@@ -241,18 +250,130 @@ namespace cstest
                 ip = next[ip];
             }
         }
-        //public virtual void grow(int);
+        public virtual void grow(int nextra)
+        {
+            bigint target = (bigint)nlocal + nextra;
+            if (target <= maxlocal) return;
+
+            int oldmax = maxlocal;
+            bigint newmax = maxlocal;
+            while (newmax < target) newmax += DELTA;
+
+            if (newmax > Run.MAXSMALLINT)
+                sparta.error.one("Per-processor particle count is too big");
+
+            maxlocal = (int)newmax;
+            //particles = (OnePart*)
+            //  memory->srealloc(particles, maxlocal * sizeof(OnePart),
+            //           "particle:particles");
+            //memset(&particles[oldmax], 0, (maxlocal - oldmax) * sizeof(OnePart));
+            particles = new OnePart[maxlocal];
+            if (ncustom == 0) return;
+
+            for (int i = 0; i < ncustom; i++)
+            {
+                if (ename[i] == null) continue;
+                grow_custom(i, oldmax, maxlocal);
+            }
+        }
         public virtual void grow_species()
         {
             species = new List<Species>(maxspecies);
-            //Console.WriteLine("particle.add_species()->grow_species");
+            //Console.WriteLine("particle.add_species().grow_species");
         }
         //public void grow_next();
-        //public virtual void pre_weight();
-        //public virtual void post_weight();
+        public virtual void pre_weight()
+        {
+            int icell;
+            Grid.ChildInfo[] cinfo = sparta.grid.cinfo;
+
+            for (int i = 0; i < nlocal; i++)
+            {
+                icell = particles[i].icell;
+                particles[i].weight = cinfo[icell].weight;
+            }
+        }
+        public virtual void post_weight()
+        {
+            int m, icell, nclone;
+            double ratio, fraction;
+
+            int nbytes = Marshal.SizeOf(typeof(OnePart));
+            Grid.ChildInfo[] cinfo = sparta.grid.cinfo;
+
+            // nlocal_original-1 = index of last original particle
+
+            int nlocal_original = nlocal;
+            int i = 0;
+
+            while (i < nlocal_original)
+            {
+                icell = particles[i].icell;
+
+                // next particle will be an original particle
+                // skip it if no weight change
+
+                if (particles[i].weight == cinfo[icell].weight)
+                {
+                    i++;
+                    continue;
+                }
+
+                // ratio < 1.0 is candidate for deletion
+                // if deleted and particle that takes its place is cloned (Nloc > Norig)
+                //   then skip it via i++, else will examine it on next iteration
+
+                ratio = particles[i].weight / cinfo[icell].weight;
+
+                if (ratio < 1.0)
+                {
+                    if (wrandom.uniform() > ratio)
+                    {
+                        //memcpy(&particles[i], &particles[nlocal - 1], nbytes);
+                        particles[i] =particles[nlocal - 1];
+                        if (ncustom!=0) copy_custom(i, nlocal - 1);
+                        if (nlocal > nlocal_original) i++;
+                        else nlocal_original--;
+                        nlocal--;
+                    }
+                    else i++;
+                    continue;
+                }
+
+                // ratio > 1.0 is candidate for cloning
+                // create Nclone new particles each with unique ID 
+
+                nclone = Convert.ToInt32(ratio);
+                fraction = ratio - nclone;
+                nclone--;
+                if (wrandom.uniform() < fraction) nclone++;
+
+                for (m = 0; m < nclone; m++)
+                {
+                    clone_particle(i);
+                    particles[nlocal - 1].id = (int)(Run.MAXSMALLINT * wrandom.uniform());
+                }
+                i++;
+            }
+        }
 
         //public virtual int add_particle(int, int, int, double*, double*, double, double);
-        //public int clone_particle(int);
+        public int clone_particle(int index)
+        {
+            int reallocflag = 0;
+            if (nlocal == maxlocal)
+            {
+                grow(1);
+                reallocflag = 1;
+            }
+
+            //memcpy(&particles[nlocal], &particles[index], sizeof(OnePart));
+            particles[nlocal] = particles[index];
+            if (ncustom!=0) copy_custom(nlocal, index);
+
+            nlocal++;
+            return reallocflag;
+        }
         public void add_species(int narg, string[] args)
         {
             string[] arg = new string[narg];
@@ -419,7 +540,51 @@ namespace cstest
             return -1;
         }
         //public int add_custom(char*, int, int);
-        //public void grow_custom(int, int, int);
+        public void grow_custom(int index, int nold, int nnew)
+        {
+            if (etype[index] == (int)Enum3.INT)
+            {
+                if (esize[index] == 0)
+                {
+                    int[] ivector = eivec[ewhich[index]];
+                    //memory->grow(ivector, nnew, "particle:eivec");
+                    ivector = new int[nnew];
+                    if (ivector!=null)
+                    {
+                        memset(&ivector[nold], 0, (nnew - nold) * sizeof(int));
+                    }
+
+                    eivec[ewhich[index]] = ivector;
+                }
+                else
+                {
+                    int[][] iarray = eiarray[ewhich[index]];
+                    memory->grow(iarray, nnew, esize[index], "particle:eiarray");
+                    if (iarray)
+                        memset(&iarray[nold][0], 0, (nnew - nold) * esize[index] * sizeof(int));
+                    eiarray[ewhich[index]] = iarray;
+                }
+
+            }
+            else
+            {
+                if (esize[index] == 0)
+                {
+                    double* dvector = edvec[ewhich[index]];
+                    memory->grow(dvector, nnew, "particle:edvec");
+                    if (dvector) memset(&dvector[nold], 0, (nnew - nold) * sizeof(double));
+                    edvec[ewhich[index]] = dvector;
+                }
+                else
+                {
+                    double** darray = edarray[ewhich[index]];
+                    memory->grow(darray, nnew, esize[index], "particle:edarray");
+                    if (darray)
+                        memset(&darray[nold][0], 0, (nnew - nold) * esize[index] * sizeof(double));
+                    edarray[ewhich[index]] = darray;
+                }
+            }
+        }
         public void remove_custom(int index)
         {
             //delete[] ename[index];
@@ -429,7 +594,7 @@ namespace cstest
             {
                 if (esize[index] == 0)
                 {
-                    //memory->destroy(eivec[ewhich[index]]);
+                    //memory.destroy(eivec[ewhich[index]]);
                     eivec[ewhich[index]] = null;
                     ncustom_ivec--;
                     for (int i = ewhich[index]; i < ncustom_ivec; i++)
@@ -441,7 +606,7 @@ namespace cstest
                 }
                 else
                 {
-                    //memory->destroy(eiarray[ewhich[index]]);
+                    //memory.destroy(eiarray[ewhich[index]]);
                     eiarray[ewhich[index]] = null;
                     ncustom_iarray--;
                     for (int i = ewhich[index]; i < ncustom_iarray; i++)
@@ -457,7 +622,7 @@ namespace cstest
             {
                 if (esize[index] == 0)
                 {
-                    //memory->destroy(edvec[ewhich[index]]);
+                    //memory.destroy(edvec[ewhich[index]]);
                     edvec[ewhich[index]] = null;
                     ncustom_dvec--;
                     for (int i = ewhich[index]; i < ncustom_dvec; i++)
@@ -469,7 +634,7 @@ namespace cstest
                 }
                 else
                 {
-                    //memory->destroy(edarray[ewhich[index]]);
+                    //memory.destroy(edarray[ewhich[index]]);
                     edarray[ewhich[index]] = null;
                     ncustom_darray--;
                     for (int i = ewhich[index]; i < ncustom_darray; i++)
@@ -592,7 +757,20 @@ namespace cstest
         }
         //public void unpack_custom(char*, int);
 
-        //public bigint memory_usage();
+        public bigint memory_usage()
+        {
+            bigint bytes = (bigint)maxlocal * Marshal.SizeOf(typeof(OnePart));
+            bytes += (bigint)maxlocal * sizeof(int);
+            for (int i = 0; i < ncustom_ivec; i++)
+                bytes += (bigint)maxlocal * sizeof(int);
+            for (int i = 0; i < ncustom_iarray; i++)
+                bytes += (bigint)maxlocal * eicol[i] * sizeof(int);
+            for (int i = 0; i < ncustom_dvec; i++)
+                bytes += (bigint)maxlocal * sizeof(double);
+            for (int i = 0; i < ncustom_darray; i++)
+                bytes += (bigint)maxlocal * edcol[i] * sizeof(double);
+            return bytes;
+        }
         private SPARTA sparta;
         public Particle(SPARTA sparta)
         {
