@@ -548,10 +548,21 @@ namespace cstest
                 {
                     int[] ivector = eivec[ewhich[index]];
                     //memory->grow(ivector, nnew, "particle:eivec");
-                    ivector = new int[nnew];
+                    int[] tempvector = new int[nnew];
                     if (ivector!=null)
                     {
-                        memset(&ivector[nold], 0, (nnew - nold) * sizeof(int));
+                        Array.Copy(ivector, tempvector, ivector.Length);
+                        //memset(&ivector[nold], 0, (nnew - nold) * sizeof(int));
+                        for (int i = nold; i < nnew-nold; i++)
+                        {
+                            tempvector[i] = 0;
+                        }
+                        ivector = new int[nnew];
+                        Array.Copy(tempvector, ivector, nnew);
+                    }
+                    else
+                    {
+                        ivector = new int[nnew];
                     }
 
                     eivec[ewhich[index]] = ivector;
@@ -559,7 +570,12 @@ namespace cstest
                 else
                 {
                     int[][] iarray = eiarray[ewhich[index]];
-                    memory->grow(iarray, nnew, esize[index], "particle:eiarray");
+                    //memory->grow(iarray, nnew, esize[index], "particle:eiarray");
+                    iarray = new int[nnew][];
+                    for (int i = 0; i < length; i++)
+                    {
+
+                    }
                     if (iarray)
                         memset(&iarray[nold][0], 0, (nnew - nold) * esize[index] * sizeof(int));
                     eiarray[ewhich[index]] = iarray;
