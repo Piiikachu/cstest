@@ -553,7 +553,7 @@ namespace cstest
                     {
                         Array.Copy(ivector, tempvector, ivector.Length);
                         //memset(&ivector[nold], 0, (nnew - nold) * sizeof(int));
-                        for (int i = nold; i < nnew-nold; i++)
+                        for (int i = nold+1; i < nnew; i++)
                         {
                             tempvector[i] = 0;
                         }
@@ -571,13 +571,32 @@ namespace cstest
                 {
                     int[][] iarray = eiarray[ewhich[index]];
                     //memory->grow(iarray, nnew, esize[index], "particle:eiarray");
-                    iarray = new int[nnew][];
-                    for (int i = 0; i < length; i++)
+                    
+                    if (iarray != null)
                     {
-
+                        int[][] temparray = new int[nnew][];
+                        for (int i = 0; i < nold; i++)
+                        {
+                            //temparray[i] = iarray[i];
+                            Array.Copy(iarray[i], temparray[i], iarray[i].Length);
+                        }
+                        for (int i = nold; i < nnew; i++)
+                        {
+                            temparray[i] = new int[esize[index]];
+                        }
+                        iarray = temparray;
                     }
-                    if (iarray)
-                        memset(&iarray[nold][0], 0, (nnew - nold) * esize[index] * sizeof(int));
+                    else
+                    {
+                        iarray = new int[nnew][];
+                        for (int i = 0; i < nnew; i++)
+                        {
+                            iarray[i] = new int[esize[index]];
+                        }
+                    }
+                        
+                    
+                        //memset(&iarray[nold][0], 0, (nnew - nold) * esize[index] * sizeof(int));
                     eiarray[ewhich[index]] = iarray;
                 }
 
@@ -586,17 +605,37 @@ namespace cstest
             {
                 if (esize[index] == 0)
                 {
-                    double* dvector = edvec[ewhich[index]];
-                    memory->grow(dvector, nnew, "particle:edvec");
-                    if (dvector) memset(&dvector[nold], 0, (nnew - nold) * sizeof(double));
+                    double[] dvector = edvec[ewhich[index]];
+                    double[] tempvector = new double[nnew];
+                    Array.Copy(dvector, tempvector, dvector.Length);
+                    for (int i = nold+1; i < nnew; i++)
+                    {
+                        tempvector[i] = 0;
+                    }
+                    //memory->grow(dvector, nnew, "particle:edvec");
+                    dvector = new double[nnew];
+                    Array.Copy(tempvector, dvector, nnew);
+                    //if (dvector!=null) memset(&dvector[nold], 0, (nnew - nold) * sizeof(double));
                     edvec[ewhich[index]] = dvector;
                 }
                 else
                 {
-                    double** darray = edarray[ewhich[index]];
-                    memory->grow(darray, nnew, esize[index], "particle:edarray");
-                    if (darray)
-                        memset(&darray[nold][0], 0, (nnew - nold) * esize[index] * sizeof(double));
+                    double[][] darray = edarray[ewhich[index]];
+                    //memory->grow(darray, nnew, esize[index], "particle:edarray");
+                    if (darray != null)
+                    {
+                        double[][] tempdarray = new double[nnew][];
+                        for (int i = 0; i < nold; i++)
+                        {
+                            //tempdarray[i] = darray[i];
+                            Array.Copy(darray[i], tempdarray[i], darray[i].Length);
+                        }
+                        for (int i = nold+1; i < nnew; i++)
+                        {
+                            tempdarray[i] = new double[esize[index]];
+                        }
+                    }
+                        //memset(&darray[nold][0], 0, (nnew - nold) * esize[index] * sizeof(double));
                     edarray[ewhich[index]] = darray;
                 }
             }
