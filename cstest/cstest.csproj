@@ -54,6 +54,7 @@
     <Compile Include="Domain.cs" />
     <Compile Include="Dump.cs" />
     <Compile Include="Error.cs" />
+    <Compile Include="Finish.cs" />
     <Compile Include="Fix.cs" />
     <Compile Include="FixAmbipolar.cs" />
     <Compile Include="FixEmit.cs" />

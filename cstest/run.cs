@@ -184,9 +184,9 @@ namespace cstest
                 sparta.timer.init();
                 sparta.timer.barrier_start((int)Timer.Enum1.TIME_LOOP);
                 sparta.update.run(nsteps);
-                sparta.timer.barrier_stop(TIME_LOOP);
+                sparta.timer.barrier_stop((int)Timer.Enum1.TIME_LOOP);
 
-                Finish finish(sparta);
+                Finish finish=new Finish(sparta);
                 finish.end(postflag, 0.0);
 
                 // perform multiple runs optionally interleaved with invocation command(s)
