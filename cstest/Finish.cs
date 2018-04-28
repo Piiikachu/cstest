@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,8 +24,8 @@ namespace cstest
             int i;
             int[] histo=new int[10];
             int loopflag, statsflag, timeflag, histoflag;
-            double time, tmp=0, ave, max, min;
-            double time_loop, time_other;
+            double time, tmp=0, ave=0, max = 0, min = 0;
+            double time_loop=0, time_other=0;
 
             int me=0, nprocs=0;
             sparta.mpi.MPI_Comm_rank(sparta.world, ref me);
@@ -70,16 +71,10 @@ namespace cstest
 
             if (me == 0)
             {
-                if (screen) fprintf(screen,
-                        "Loop time of %g on %d procs for %d steps with "
-            
-                        BIGINT_FORMAT " particles\n",
-                        time_loop, nprocs, sparta.update.nsteps, sparta.particle.nglobal);
-                if (logfile) fprintf(logfile,
-                         "Loop time of %g on %d procs for %d steps with "
-            
-                         BIGINT_FORMAT " particles\n",
-                         time_loop, nprocs, sparta.update.nsteps, sparta.particle.nglobal);
+                string str = string.Format("Loop time of {0} on {1} procs for {2} steps with {3} particles\n", time_loop, nprocs, sparta.update.nsteps, sparta.particle.nglobal);
+                Console.WriteLine(str);
+                if (sparta.screen!=null) new StreamWriter(sparta.screen).WriteLine(str);
+                if (sparta.logfile!=null) new StreamWriter(sparta.logfile).WriteLine(str);
             }
 
             // cummulative stats over entire run
@@ -119,7 +114,7 @@ namespace cstest
                     sparta.mpi.MPI_Allreduce(ref sparta.collide.nreact_running, ref nreact_total, 1,
                                   MPI.MPI_LONG_LONG, MPI.MPI_SUM, sparta.world);
                 }
-                sparta.mpi.MPI_Allreduce(ref sparta.update.nstuck, ref stuck_total, 1, MPI_INT, MPI.MPI_SUM, sparta.world);
+                sparta.mpi.MPI_Allreduce(ref sparta.update.nstuck, ref stuck_total, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
 
                 double pms, pmsp, ctps, cis, pfc, pfcwb, pfeb, schps, sclps, srps, caps, cps, rps;
                 pms = pmsp = ctps = cis = pfc = pfcwb = pfeb =
@@ -144,94 +139,58 @@ namespace cstest
                     rps = 1.0 * nreact_total / nmove_total;
                 }
 
-                char str[32];
+                string str;
 
                 if (me == 0)
                 {
-                    if (screen)
-                    {
-                        fprintf(screen, "\n");
-                        fprintf(screen, "Particle moves    = " BIGINT_FORMAT " %s\n",
-                                nmove_total, MathExtra::num2str(nmove_total, str));
-                        fprintf(screen, "Cells touched     = " BIGINT_FORMAT " %s\n",
-                                ntouch_total, MathExtra::num2str(ntouch_total, str));
-                        fprintf(screen, "Particle comms    = " BIGINT_FORMAT " %s\n",
-                                ncomm_total, MathExtra::num2str(ncomm_total, str));
-                        fprintf(screen, "Boundary collides = " BIGINT_FORMAT " %s\n",
-                                nboundary_total, MathExtra::num2str(nboundary_total, str));
-                        fprintf(screen, "Boundary exits    = " BIGINT_FORMAT " %s\n",
-                                nexit_total, MathExtra::num2str(nexit_total, str));
-                        fprintf(screen, "SurfColl checks   = " BIGINT_FORMAT " %s\n",
-                                nscheck_total, MathExtra::num2str(nscheck_total, str));
-                        fprintf(screen, "SurfColl occurs   = " BIGINT_FORMAT " %s\n",
-                                nscollide_total, MathExtra::num2str(nscollide_total, str));
-                        fprintf(screen, "Surf reactions    = " BIGINT_FORMAT " %s\n",
-                                nsreact_total, MathExtra::num2str(nsreact_total, str));
-                        fprintf(screen, "Collide attempts  = " BIGINT_FORMAT " %s\n",
-                                nattempt_total, MathExtra::num2str(nattempt_total, str));
-                        fprintf(screen, "Collide occurs    = " BIGINT_FORMAT " %s\n",
-                                ncollide_total, MathExtra::num2str(ncollide_total, str));
-                        fprintf(screen, "Gas reactions     = " BIGINT_FORMAT " %s\n",
-                                nreact_total, MathExtra::num2str(nreact_total, str));
-                        fprintf(screen, "Particles stuck   = %d\n", stuck_total);
+                    str = "\n";
+                    str += string.Format("Particle moves    = {0} {1}\n",
+                                nmove_total, MathExtra.num2str(nmove_total));
+                    str += string.Format("Cells touched     = {0} {1}\n",
+                                ntouch_total, MathExtra.num2str(ntouch_total));
+                    str += string.Format("Particle comms    = {0} {1}\n",
+                                ncomm_total, MathExtra.num2str(ncomm_total));
+                    str += string.Format("Boundary collides = {0} {1}\n",
+                            nboundary_total, MathExtra.num2str(nboundary_total));
+                    str += string.Format("Boundary exits    = {0} {1}\n",
+                            nboundary_total, MathExtra.num2str(nexit_total));
+                    str += string.Format("SurfColl checks   = {0} {1}\n",
+                            nscheck_total, MathExtra.num2str(nscheck_total));
+                    str += string.Format("SurfColl occurs   = {0} {1}\n",
+                            nscollide_total, MathExtra.num2str(nscollide_total));
+                    str += string.Format("Surf reactions    = {0} {1}\n",
+                            nsreact_total, MathExtra.num2str(nsreact_total));
+                    str += string.Format("Collide attempts  = {0} {1}\n",
+                            nattempt_total, MathExtra.num2str(nattempt_total));
+                    str += string.Format("Collide occurs    = {0} {1}\n",
+                            ncollide_total, MathExtra.num2str(ncollide_total));
+                    str += string.Format("Gas reactions     = {0} {1}\n",
+                            nreact_total, MathExtra.num2str(nreact_total));
+                    str += string.Format("Particles stuck   = {0}\n", stuck_total);
 
-                        fprintf(screen, "\n");
-                        fprintf(screen, "Particle-moves/CPUsec/proc: %g\n", pmsp);
-                        fprintf(screen, "Particle-moves/step: %g\n", pms);
-                        fprintf(screen, "Cell-touches/particle/step: %g\n", ctps);
-                        fprintf(screen, "Particle comm iterations/step: %g\n", cis);
-                        fprintf(screen, "Particle fraction communicated: %g\n", pfc);
-                        fprintf(screen, "Particle fraction colliding with boundary: %g\n", pfcwb);
-                        fprintf(screen, "Particle fraction exiting boundary: %g\n", pfeb);
-                        fprintf(screen, "Surface-checks/particle/step: %g\n", schps);
-                        fprintf(screen, "Surface-collisions/particle/step: %g\n", sclps);
-                        fprintf(screen, "Surface-reactions/particle/step: %g\n", srps);
-                        fprintf(screen, "Collision-attempts/particle/step: %g\n", caps);
-                        fprintf(screen, "Collisions/particle/step: %g\n", cps);
-                        fprintf(screen, "Gas-reactions/particle/step: %g\n", rps);
+                    str += string.Format("\n");
+                    str += string.Format("Particle-moves/CPUsec/proc: {0}\n", pmsp);
+                    str += string.Format("Particle-moves/step: {0}\n", pms);
+                    str += string.Format("Cell-touches/particle/step: {0}\n", ctps);
+                    str += string.Format("Particle comm iterations/step: {0}\n", cis);
+                    str += string.Format("Particle fraction communicated: {0}\n", pfc);
+                    str += string.Format("Particle fraction colliding with boundary: {0}\n", pfcwb);
+                    str += string.Format("Particle fraction exiting boundary: {0}\n", pfeb);
+                    str += string.Format("Surface-checks/particle/step: {0}\n", schps);
+                    str += string.Format("Surface-collisions/particle/step: {0}\n", sclps);
+                    str += string.Format("Surface-reactions/particle/step: {0}\n", srps);
+                    str += string.Format("Collision-attempts/particle/step: {0}\n", caps);
+                    str += string.Format("Collisions/particle/step: {0}\n", cps);
+                    str += string.Format("Gas-reactions/particle/step: {0}\n", rps);
+                    Console.WriteLine(str);
+                    if (sparta.screen!=null)
+                    {
+                        new StreamWriter(sparta.screen).WriteLine(str);
                     }
-                    if (logfile)
+                    if (sparta.logfile!=null)
                     {
-                        fprintf(logfile, "\n");
-                        fprintf(logfile, "Particle moves    = " BIGINT_FORMAT " %s\n",
-                                nmove_total, MathExtra::num2str(nmove_total, str));
-                        fprintf(logfile, "Cells touched     = " BIGINT_FORMAT " %s\n",
-                                ntouch_total, MathExtra::num2str(ntouch_total, str));
-                        fprintf(logfile, "Particle comms    = " BIGINT_FORMAT " %s\n",
-                                ncomm_total, MathExtra::num2str(ncomm_total, str));
-                        fprintf(logfile, "Boundary collides = " BIGINT_FORMAT " %s\n",
-                                nboundary_total, MathExtra::num2str(nboundary_total, str));
-                        fprintf(logfile, "Boundary exits    = " BIGINT_FORMAT " %s\n",
-                                nexit_total, MathExtra::num2str(nexit_total, str));
-                        fprintf(logfile, "SurfColl checks   = " BIGINT_FORMAT " %s\n",
-                                nscheck_total, MathExtra::num2str(nscheck_total, str));
-                        fprintf(logfile, "SurfColl occurs   = " BIGINT_FORMAT " %s\n",
-                                nscollide_total, MathExtra::num2str(nscollide_total, str));
-                        fprintf(logfile, "Surf reactions    = " BIGINT_FORMAT " %s\n",
-                                nsreact_total, MathExtra::num2str(nsreact_total, str));
-                        fprintf(logfile, "Collide attempts  = " BIGINT_FORMAT " %s\n",
-                                nattempt_total, MathExtra::num2str(nattempt_total, str));
-                        fprintf(logfile, "Collide occurs    = " BIGINT_FORMAT " %s\n",
-                                ncollide_total, MathExtra::num2str(ncollide_total, str));
-                        fprintf(logfile, "Reactions         = " BIGINT_FORMAT " %s\n",
-                                nreact_total, MathExtra::num2str(nreact_total, str));
-                        fprintf(logfile, "Particles stuck   = %d\n", stuck_total);
-
-                        fprintf(logfile, "\n");
-                        fprintf(logfile, "Particle-moves/CPUsec/proc: %g\n", pmsp);
-                        fprintf(logfile, "Particle-moves/step: %g\n", pms);
-                        fprintf(logfile, "Cell-touches/particle/step: %g\n", ctps);
-                        fprintf(logfile, "Particle comm iterations/step: %g\n", cis);
-                        fprintf(logfile, "Particle fraction communicated: %g\n", pfc);
-                        fprintf(logfile, "Particle fraction colliding with boundary: %g\n",
-                                pfcwb);
-                        fprintf(logfile, "Particle fraction exiting boundary: %g\n", pfeb);
-                        fprintf(logfile, "Surface-checks/particle/step: %g\n", schps);
-                        fprintf(logfile, "Surface-collisions/particle/step: %g\n", sclps);
-                        fprintf(logfile, "Surf-reactions/particle/step: %g\n", srps);
-                        fprintf(logfile, "Collision-attempts/particle/step: %g\n", caps);
-                        fprintf(logfile, "Collisions/particle/step: %g\n", cps);
-                        fprintf(logfile, "Reactions/particle/step: %g\n", rps);
+                        new StreamWriter(sparta.logfile).WriteLine( str);
+                        
                     }
                 }
             }
@@ -242,8 +201,8 @@ namespace cstest
             {
                 if (me == 0)
                 {
-                    if (screen) fprintf(screen, "\n");
-                    if (logfile) fprintf(logfile, "\n");
+                    if (sparta.screen!=null) new StreamWriter(sparta.screen).WriteLine( "\n");
+                    if (sparta.logfile!=null) new StreamWriter(sparta.logfile).WriteLine( "\n");
                 }
 
                 time = sparta.timer.array[(int)EnumTime.Time_MOVE];
@@ -251,11 +210,13 @@ namespace cstest
                 time = tmp / nprocs;
                 if (me == 0)
                 {
-                    if (screen)
-                        fprintf(screen, "Move  time (%%) = %g (%g)\n",
+                    Console.WriteLine("Move  time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
-                    if (logfile)
-                        fprintf(logfile, "Move  time (%%) = %g (%g)\n",
+                    if (sparta.screen!=null)
+                        new StreamWriter(sparta.screen).WriteLine( "Move  time (%%) = {0} ({1})\n",
+                            time, time / time_loop * 100.0);
+                    if (sparta.logfile!=null)
+                        new StreamWriter(sparta.logfile).WriteLine( "Move  time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
                 }
 
@@ -264,11 +225,13 @@ namespace cstest
                 time = tmp / nprocs;
                 if (me == 0)
                 {
-                    if (screen)
-                        fprintf(screen, "Coll  time (%%) = %g (%g)\n",
+                    Console.WriteLine("Coll  time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
-                    if (logfile)
-                        fprintf(logfile, "Coll  time (%%) = %g (%g)\n",
+                    if (sparta.screen!=null)
+                        new StreamWriter(sparta.screen).WriteLine( "Coll  time (%%) = {0} ({1})\n",
+                            time, time / time_loop * 100.0);
+                    if (sparta.logfile!=null)
+                        new StreamWriter(sparta.logfile).WriteLine( "Coll  time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
                 }
 
@@ -277,11 +240,13 @@ namespace cstest
                 time = tmp / nprocs;
                 if (me == 0)
                 {
-                    if (screen)
-                        fprintf(screen, "Sort  time (%%) = %g (%g)\n",
+                    Console.WriteLine("Sort  time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
-                    if (logfile)
-                        fprintf(logfile, "Sort  time (%%) = %g (%g)\n",
+                    if (sparta.screen!=null)
+                        new StreamWriter(sparta.screen).WriteLine( "Sort  time (%%) = {0} ({1})\n",
+                            time, time / time_loop * 100.0);
+                    if (sparta.logfile!=null)
+                        new StreamWriter(sparta.logfile).WriteLine( "Sort  time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
                 }
 
@@ -290,11 +255,13 @@ namespace cstest
                 time = tmp / nprocs;
                 if (me == 0)
                 {
-                    if (screen)
-                        fprintf(screen, "Comm  time (%%) = %g (%g)\n",
+                    Console.WriteLine("Comm  time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
-                    if (logfile)
-                        fprintf(logfile, "Comm  time (%%) = %g (%g)\n",
+                    if (sparta.screen!=null)
+                        new StreamWriter(sparta.screen).WriteLine( "Comm  time (%%) = {0} ({1})\n",
+                            time, time / time_loop * 100.0);
+                    if (sparta.logfile!=null)
+                        new StreamWriter(sparta.logfile).WriteLine( "Comm  time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
                 }
 
@@ -303,11 +270,13 @@ namespace cstest
                 time = tmp / nprocs;
                 if (me == 0)
                 {
-                    if (screen)
-                        fprintf(screen, "Modfy time (%%) = %g (%g)\n",
+                    Console.WriteLine("Modfy time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
-                    if (logfile)
-                        fprintf(logfile, "Modfy time (%%) = %g (%g)\n",
+                    if (sparta.screen!=null)
+                        new StreamWriter(sparta.screen).WriteLine( "Modfy time (%%) = {0} ({1})\n",
+                            time, time / time_loop * 100.0);
+                    if (sparta.logfile!=null)
+                        new StreamWriter(sparta.logfile).WriteLine( "Modfy time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
                 }
 
@@ -316,11 +285,13 @@ namespace cstest
                 time = tmp / nprocs;
                 if (me == 0)
                 {
-                    if (screen)
-                        fprintf(screen, "Outpt time (%%) = %g (%g)\n",
+                    Console.WriteLine("Outpt time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
-                    if (logfile)
-                        fprintf(logfile, "Outpt time (%%) = %g (%g)\n",
+                    if (sparta.screen!=null)
+                        new StreamWriter(sparta.screen).WriteLine( "Outpt time (%%) = {0} ({1})\n",
+                            time, time / time_loop * 100.0);
+                    if (sparta.logfile!=null)
+                        new StreamWriter(sparta.logfile).WriteLine( "Outpt time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
                 }
 
@@ -329,11 +300,13 @@ namespace cstest
                 time = tmp / nprocs;
                 if (me == 0)
                 {
-                    if (screen)
-                        fprintf(screen, "Other time (%%) = %g (%g)\n",
+                    Console.WriteLine("Other time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
-                    if (logfile)
-                        fprintf(logfile, "Other time (%%) = %g (%g)\n",
+                    if (sparta.screen!=null)
+                        new StreamWriter(sparta.screen).WriteLine( "Other time (%%) = {0} ({1})\n",
+                            time, time / time_loop * 100.0);
+                    if (sparta.logfile!=null)
+                        new StreamWriter(sparta.logfile).WriteLine( "Other time (%%) = {0} ({1})\n",
                             time, time / time_loop * 100.0);
                 }
             }
@@ -344,98 +317,107 @@ namespace cstest
             {
                 if (me == 0)
                 {
-                    if (screen) fprintf(screen, "\n");
-                    if (logfile) fprintf(logfile, "\n");
+                    Console.WriteLine("\n");
+                    if (sparta.screen!=null) new StreamWriter(sparta.screen).WriteLine( "\n");
+                    if (sparta.logfile!=null) new StreamWriter(sparta.logfile).WriteLine( "\n");
                 }
 
                 tmp = sparta.particle.nlocal;
-                stats(1, &tmp, &ave, &max, &min, 10, histo);
+                stats(1, ref tmp, ref ave, ref max, ref min, 10, ref histo);
                 if (me == 0)
                 {
-                    if (screen)
+                    string str=string.Format("Particles: {0} ave {1} max {2} min\n", ave, max, min);
+                    str += "Histogram:";
+                    for (int a = 0; a < 10; a++)
                     {
-                        fprintf(screen, "Particles: %g ave %g max %g min\n", ave, max, min);
-                        fprintf(screen, "Histogram:");
-                        for (i = 0; i < 10; i++) fprintf(screen, " %d", histo[i]);
-                        fprintf(screen, "\n");
+                        str+=string.Format(" {0}", histo[a]);
                     }
-                    if (logfile)
+                    str += "\n";
+                    Console.WriteLine(str);
+                    if (sparta.screen!=null)
                     {
-                        fprintf(logfile, "Particles: %g ave %g max %g min\n", ave, max, min);
-                        fprintf(logfile, "Histogram:");
-                        for (i = 0; i < 10; i++) fprintf(logfile, " %d", histo[i]);
-                        fprintf(logfile, "\n");
+                        new StreamWriter(sparta.screen).WriteLine( str);
+                    }
+                    if (sparta.logfile!=null)
+                    {
+                        new StreamWriter(sparta.logfile).WriteLine( str);
                     }
                 }
 
                 tmp = sparta.grid.nlocal;
-                stats(1, &tmp, &ave, &max, &min, 10, histo);
+                stats(1, ref tmp, ref ave, ref max, ref min, 10, ref histo);
                 if (me == 0)
                 {
-                    if (screen)
+                    string str=string.Format("Cells:     {0} ave {1} max {2} min\n", ave, max, min);
+                    str += "Histogram:";
+                    for (int a = 0; a < 10; a++)
                     {
-                        fprintf(screen, "Cells:     %g ave %g max %g min\n", ave, max, min);
-                        fprintf(screen, "Histogram:");
-                        for (i = 0; i < 10; i++) fprintf(screen, " %d", histo[i]);
-                        fprintf(screen, "\n");
+                        str += string.Format(" {0}", histo[a]);
                     }
-                    if (logfile)
+                    str += "\n";
+                    Console.WriteLine(str);
+                    if (sparta.screen!=null)
                     {
-                        fprintf(logfile, "Cells:      %g ave %g max %g min\n", ave, max, min);
-                        fprintf(logfile, "Histogram:");
-                        for (i = 0; i < 10; i++) fprintf(logfile, " %d", histo[i]);
-                        fprintf(logfile, "\n");
+                        new StreamWriter(sparta.screen).WriteLine( str);
+                    }
+                    if (sparta.logfile!=null)
+                    {
+                        new StreamWriter(sparta.logfile).WriteLine(str);
                     }
                 }
 
                 tmp = sparta.grid.nghost;
-                stats(1, &tmp, &ave, &max, &min, 10, histo);
+                stats(1, ref tmp, ref ave, ref max, ref min, 10, ref histo);
                 if (me == 0)
                 {
-                    if (screen)
+                    string str = string.Format("GhostCell: {0} ave {1} max {2} min\n", ave, max, min);
+                    str += "Histogram:";
+                    for (int a = 0; a < 10; a++)
                     {
-                        fprintf(screen, "GhostCell: %g ave %g max %g min\n", ave, max, min);
-                        fprintf(screen, "Histogram:");
-                        for (i = 0; i < 10; i++) fprintf(screen, " %d", histo[i]);
-                        fprintf(screen, "\n");
+                        str += string.Format(" {0}", histo[a]);
                     }
-                    if (logfile)
+                    str += "\n";
+                    Console.WriteLine(str);
+                    if (sparta.screen!=null)
                     {
-                        fprintf(logfile, "GhostCell: %g ave %g max %g min\n", ave, max, min);
-                        fprintf(logfile, "Histogram:");
-                        for (i = 0; i < 10; i++) fprintf(logfile, " %d", histo[i]);
-                        fprintf(logfile, "\n");
+                        new StreamWriter(sparta.screen).WriteLine( str);
+                    }
+                    if (sparta.logfile!=null)
+                    {
+                        new StreamWriter(sparta.logfile).WriteLine( str);
                     }
                 }
 
                 tmp = sparta.grid.nempty;
-                stats(1, &tmp, &ave, &max, &min, 10, histo);
+                stats(1, ref tmp, ref ave, ref max, ref min, 10,ref histo);
                 if (me == 0)
                 {
-                    if (screen)
+                    string str = string.Format("EmptyCell: {0} ave {1} max {2} min\n", ave, max, min);
+                    str += "Histogram:";
+                    for (int a = 0; a < 10; a++)
                     {
-                        fprintf(screen, "EmptyCell: %g ave %g max %g min\n", ave, max, min);
-                        fprintf(screen, "Histogram:");
-                        for (i = 0; i < 10; i++) fprintf(screen, " %d", histo[i]);
-                        fprintf(screen, "\n");
+                        str += string.Format(" {0}", histo[a]);
                     }
-                    if (logfile)
+                    str += "\n";
+                    Console.WriteLine(str);
+                    if (sparta.screen!=null)
                     {
-                        fprintf(logfile, "EmptyCell: %g ave %g max %g min\n", ave, max, min);
-                        fprintf(logfile, "Histogram:");
-                        for (i = 0; i < 10; i++) fprintf(logfile, " %d", histo[i]);
-                        fprintf(logfile, "\n");
+                        new StreamWriter(sparta.screen).WriteLine(str);
+                    }
+                    if (sparta.logfile!=null)
+                    {
+                        new StreamWriter(sparta.logfile).WriteLine( str);
                     }
                 }
             }
 
-            if (logfile) fflush(logfile);
+            if (sparta.logfile!=null) sparta.logfile.Flush();
         }
 
 
-        private void stats(int n, double[] data,
-           double[] pave, double[] pmax, double[] pmin,
-           int nhisto, int[] histo)
+        private void stats(int n,ref double data,
+           ref double pave, ref double pmax,ref double pmin,
+           int nhisto,ref int[] histo)
         {
             int i, m;
             int[] histotmp;
@@ -443,13 +425,13 @@ namespace cstest
             double min = 1.0e20;
             double max = -1.0e20;
             double ave = 0.0;
-            for (i = 0; i < n; i++)
-            {
-                ave += data[i];
-                if (data[i] < min) min = data[i];
-                if (data[i] > max) max = data[i];
-            }
-
+            //for (i = 0; i < n; i++)
+            //{
+            //    ave += data[i];
+            //    if (data[i] < min) min = data[i];
+            //    if (data[i] > max) max = data[i];
+            //}
+            ave += data;
             int ntotal=0;
             sparta.mpi.MPI_Allreduce(ref n, ref ntotal, 1, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
             double tmp=0;
@@ -462,19 +444,24 @@ namespace cstest
 
             for (i = 0; i < nhisto; i++) histo[i] = 0;
 
+
             double del = max - min;
-            for (i = 0; i < n; i++)
-            {
-                if (del == 0.0) m = 0;
-                else m = Convert.ToInt32((data[i] - min) / del * nhisto);
-                if (m > nhisto - 1) m = nhisto - 1;
-                histo[m]++;
-            }
+            //for (i = 0; i < n; i++)
+            //{
+            //    if (del == 0.0) m = 0;
+            //    else m = Convert.ToInt32((data - min) / del * nhisto);
+            //    if (m > nhisto - 1) m = nhisto - 1;
+            //    histo++;
+            //}
+            if (del == 0.0) m = 0;
+            else m = Convert.ToInt32((data - min) / del * nhisto);
+            if (m > nhisto - 1) m = nhisto - 1;
+
             histotmp = new int[nhisto];
             //memory->create(histotmp, nhisto, "finish:histotmp");
             //sparta.mpi.MPI_Allreduce(ref histo,ref histotmp, nhisto, MPI.MPI_INT, MPI.MPI_SUM, sparta.world);
             histotmp = histo;
-            for (i = 0; i < nhisto; i++) histo[i] = histotmp[i];
+            //for (i = 0; i < nhisto; i++) histo[i] = histotmp[i];
             //memory->destroy(histotmp);
 
             pave = ave;

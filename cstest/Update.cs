@@ -261,8 +261,8 @@ namespace cstest
                 {
                     sparta.particle.sort();
                     sparta.timer.stamp((int)Timer.Enum1.TIME_SORT);
-
-                    sparta.collide.collisions();
+                    Console.WriteLine("sparta.collide.collisions();");
+                    
                     sparta.timer.stamp((int)Timer.Enum1.TIME_COLLIDE);
                 }
 
@@ -270,7 +270,8 @@ namespace cstest
 
                 if (n_end_of_step!=0)
                 {
-                    sparta.modify.end_of_step();
+                    Console.WriteLine("sparta.modify.end_of_step();");
+                    
                     sparta.timer.stamp((int)Timer.Enum1.TIME_MODIFY);
                 }
 
@@ -278,7 +279,8 @@ namespace cstest
 
                 if (ntimestep == sparta.output.next)
                 {
-                    sparta.output.write(ntimestep);
+                    Console.WriteLine("sparta.output.write(ntimestep);");
+                    
                     sparta.timer.stamp((int)Timer.Enum1.TIME_OUTPUT);
                 }
             }

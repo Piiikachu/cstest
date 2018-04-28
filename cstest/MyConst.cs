@@ -38,5 +38,63 @@ namespace cstest
 
             return sign * y;
         }
+
+        const double LOG_2PI = 1.83787706640934548;  /* $\log 2\pi$ */
+        const int N = 8;
+
+        const double B0 = 1;                 /* Bernoulli numbers */
+        const double B1 = (-1.0 / 2.0);
+        const double B2 = (1.0 / 6.0);
+        const double B4 = (-1.0 / 30.0);
+        const double B6 = (1.0 / 42.0);
+        const double B8 = (-1.0 / 30.0);
+        const double B10 = (5.0 / 66.0);
+        const double B12 = (-691.0 / 2730.0);
+        const double B14 = (7.0 / 6.0);
+        const double B16 = (-3617.0 / 510.0);
+                    
+        static double loggamma(double x)  /* the natural logarithm of the Gamma function. */
+        {
+            double v, w;
+
+            v = 1;
+            while (x < N) { v *= x; x++; }
+            w = 1 / (x * x);
+            return ((((((((B16 / (16 * 15)) * w + (B14 / (14 * 13))) * w
+                        + (B12 / (12 * 11))) * w + (B10 / (10 * 9))) * w
+                        + (B8 / (8 * 7))) * w + (B6 / (6 * 5))) * w
+                        + (B4 / (4 * 3))) * w + (B2 / (2 * 1))) / x
+                        + 0.5 * LOG_2PI - Math.Log(v) - x + (x - 0.5) * Math.Log(x);
+        }
+
+        public static double Gamma(double x)  /* Gamma function */
+        {
+            if (x == 0.0)
+            { /* Pole Error */
+                //errno = ERANGE;
+                
+                return 1 / x < 0 ? double.NegativeInfinity : double.PositiveInfinity;
+                throw new Exception();
+            }
+            if (x < 0)
+            {
+                int sign;
+                double zero = 0.0;
+                double i, f;
+                i = Math.Floor(-x);
+                f = -x - i;
+                //f = modf(-x, &i);
+                if (f == 0.0)
+                { /* Domain Error */
+                    //errno = EDOM;
+                    throw new Exception() ;
+                    return zero / zero;
+                }
+                sign = (i% 2.0 != 0.0) ? 1 : -1;
+                return sign * MY_PI / (Math.Sin(MY_PI * f) * Math.Exp(loggamma(1 - x)));
+            }
+            return Math.Exp(loggamma(x));
+        }
+
     }
 }

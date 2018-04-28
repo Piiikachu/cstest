@@ -665,7 +665,7 @@ namespace cstest
                 }
             }
         }
-        protected virtual void perform_task_twopass();
+        protected virtual void perform_task_twopass() { Console.WriteLine("fixemitface virtual perform_task_twopass"); }
 
         protected int split(int icell, Enum1 iface)
         {
@@ -700,8 +700,8 @@ namespace cstest
             // if needed sort particles for grid cells with tasks
 
             if (sparta.particle.sorted==0) subsonic_sort();
-            subsonic_grid();
-
+            
+            Console.WriteLine("subsonic_grid();");
             // recalculate particle insertion counts for each task
             // recompute mixture vscale, since depends on temp_thermal
 

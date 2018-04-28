@@ -45,9 +45,9 @@ namespace cstest
                     double omega = 0.5 * (mparams[isp].omega + mparams[jsp].omega);
                     double tref = 0.5 * (mparams[isp].tref + mparams[jsp].tref);
                     double mr = species[isp].mass * species[jsp].mass /
-                  (species[isp].mass + species[jsp].mass);
-                    double cxs = diam * diam *MyConst.MY_PI;
-                    prefactor[isp,jsp] = cxs * Math.Pow(2.0 * sparta.update.boltz * tref / mr, omega - 0.5) / Gamma(2.5 - omega);
+                        (species[isp].mass + species[jsp].mass);
+                    double cxs = diam * diam * MyConst.MY_PI;
+                    prefactor[isp, jsp] = cxs * Math.Pow(2.0 * sparta.update.boltz * tref / mr, omega - 0.5) / MyConst.Gamma(2.5 - omega);
                     double beta = Math.Max(vscale[isp], vscale[jsp]);
                     double vrm = 2.0 * cxs * beta;
                     vrmgroup = Math.Max(vrmgroup, vrm);
@@ -57,12 +57,6 @@ namespace cstest
             return vrmgroup;
         }
 
-        private double Gamma(double v)
-        {
-            Console.WriteLine("how to tgamma in c#");
-            //throw new NotImplementedException();
-            return 1;
-        }
 
         //public virtual double attempt_collision(int, int, double);
         //public double attempt_collision(int, int, int, double);

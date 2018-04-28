@@ -264,7 +264,7 @@ namespace cstest
 
             maxlocal = (int)newmax;
             //particles = (OnePart*)
-            //  memory->srealloc(particles, maxlocal * sizeof(OnePart),
+            //  memory.srealloc(particles, maxlocal * sizeof(OnePart),
             //           "particle:particles");
             //memset(&particles[oldmax], 0, (maxlocal - oldmax) * sizeof(OnePart));
             particles = new OnePart[maxlocal];
@@ -357,7 +357,37 @@ namespace cstest
             }
         }
 
-        //public virtual int add_particle(int, int, int, double*, double*, double, double);
+        public virtual int add_particle(int id, int ispecies, int icell,
+                           double[] x, double[] v, double erot, double evib)
+        {
+            int reallocflag = 0;
+            if (nlocal == maxlocal)
+            {
+                grow(1);
+                reallocflag = 1;
+            }
+
+            OnePart p = particles[nlocal];
+
+            p.id = id;
+            p.ispecies = ispecies;
+            p.icell = icell;
+            p.x[0] = x[0];
+            p.x[1] = x[1];
+            p.x[2] = x[2];
+            p.v[0] = v[0];
+            p.v[1] = v[1];
+            p.v[2] = v[2];
+            p.erot = erot;
+            p.evib = evib;
+            p.flag = (int)Enum1.PKEEP;
+
+            //p->dtremain = 0.0;    not needed due to memset in grow() ??
+            //p->weight = 1.0;      not needed due to memset in grow() ??
+
+            nlocal++;
+            return reallocflag;
+        }
         public int clone_particle(int index)
         {
             int reallocflag = 0;
@@ -521,8 +551,65 @@ namespace cstest
                 if (string.Equals(id, mixture[i].id)) return i;
             return -1;
         }
-        //public double erot(int, double, class RanPark *);
-        //public double evib(int, double, class RanPark *);
+        public double erot(int isp, double temp_thermal, RanPark erandom)
+        {
+            double eng, a, erm, b;
+
+            if (sparta.collide==null || sparta.collide.rotstyle == (int)Enum2.NONE) return 0.0;
+            if (species[isp].rotdof < 2) return 0.0;
+
+            if (species[isp].rotdof == 2)
+                eng = -Math.Log(erandom.uniform()) * sparta.update.boltz * temp_thermal;
+            else
+            {
+                a = 0.5 * sparta.particle.species[isp].rotdof - 1.0;
+                while (true)
+                {
+                    // energy cut-off at 10 kT
+                    erm = 10.0 * erandom.uniform();
+                    b = Math.Pow(erm / a, a) * Math.Exp(a - erm);
+                    if (b > erandom.uniform()) break;
+                }
+                eng = erm * sparta.update.boltz * temp_thermal;
+            }
+
+            return eng;
+        }
+        public double evib(int isp, double temp_thermal, RanPark erandom)
+        {
+            double eng, a, erm, b;
+
+            int vibstyle = (int)Enum2.NONE;
+            if (sparta.collide!=null) vibstyle = sparta.collide.vibstyle;
+            if (vibstyle == (int)Enum2.NONE || species[isp].vibdof < 2) return 0.0;
+
+            eng = 0.0;
+            if (vibstyle == (int)Enum2.DISCRETE && species[isp].vibdof == 2)
+            {
+                int ivib = Convert.ToInt32(-Math.Log(erandom.uniform()) * temp_thermal /
+                                             sparta.particle.species[isp].vibtemp);
+                eng = ivib * sparta.update.boltz * sparta.particle.species[isp].vibtemp;
+            }
+            else if (vibstyle == (int)Enum2.SMOOTH || species[isp].vibdof >= 2)
+            {
+                if (species[isp].vibdof == 2)
+                    eng = -Math.Log(erandom.uniform()) * sparta.update.boltz * temp_thermal;
+                else if (species[isp].vibdof > 2)
+                {
+                    a = 0.5 * sparta.particle.species[isp].vibdof - 1;
+                    while (true)
+                    {
+                        // energy cut-off at 10 kT
+                        erm = 10.0 * erandom.uniform();
+                        b = Math.Pow(erm / a, a) * Math.Exp(a - erm);
+                        if (b > erandom.uniform()) break;
+                    }
+                    eng = erm * sparta.update.boltz * temp_thermal;
+                }
+            }
+
+            return eng;
+        }
 
         //public  void write_restart_species(FILE* fp);
         //public void read_restart_species(FILE* fp);
@@ -547,7 +634,7 @@ namespace cstest
                 if (esize[index] == 0)
                 {
                     int[] ivector = eivec[ewhich[index]];
-                    //memory->grow(ivector, nnew, "particle:eivec");
+                    //memory.grow(ivector, nnew, "particle:eivec");
                     int[] tempvector = new int[nnew];
                     if (ivector!=null)
                     {
@@ -570,7 +657,7 @@ namespace cstest
                 else
                 {
                     int[][] iarray = eiarray[ewhich[index]];
-                    //memory->grow(iarray, nnew, esize[index], "particle:eiarray");
+                    //memory.grow(iarray, nnew, esize[index], "particle:eiarray");
                     
                     if (iarray != null)
                     {
@@ -612,7 +699,7 @@ namespace cstest
                     {
                         tempvector[i] = 0;
                     }
-                    //memory->grow(dvector, nnew, "particle:edvec");
+                    //memory.grow(dvector, nnew, "particle:edvec");
                     dvector = new double[nnew];
                     Array.Copy(tempvector, dvector, nnew);
                     //if (dvector!=null) memset(&dvector[nold], 0, (nnew - nold) * sizeof(double));
@@ -621,7 +708,7 @@ namespace cstest
                 else
                 {
                     double[][] darray = edarray[ewhich[index]];
-                    //memory->grow(darray, nnew, esize[index], "particle:edarray");
+                    //memory.grow(darray, nnew, esize[index], "particle:edarray");
                     if (darray != null)
                     {
                         double[][] tempdarray = new double[nnew][];

@@ -174,6 +174,7 @@ namespace cstest
             //ncomm += nsend;
             //return ncompress;
             Console.WriteLine("comm.migrate_particles");
+            return 0;
         }
         public virtual void migrate_cells(int nmigrate)
         {

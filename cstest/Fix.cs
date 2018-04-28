@@ -102,7 +102,11 @@ namespace cstest
 
         public virtual void start_of_step() { System.Console.WriteLine("fix virtual start_of_step"); }
         //public virtual void end_of_step() { }
-        //public virtual void add_particle(int, double, double, double, double[]) { }
+
+        public virtual void add_particle(int index, double temp_thermal, double temp_rot, double temp_vib, double[] vstream)
+        {
+            System.Console.WriteLine("fix virtual add_particle");
+        }
         //public virtual void gas_react(int) { }
         //public virtual void surf_react(Particle::OnePart*, int &, int &) { }
 
