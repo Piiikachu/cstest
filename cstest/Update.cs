@@ -683,9 +683,10 @@ namespace cstest
             double[] x, v, lo, hi;
             Surf.Tri tri;
             Surf.Line line;
-            Particle.OnePart iorig;
+            Particle.OnePart iorig=new Particle.OnePart();
             Particle.OnePart[] particles;
-            Particle.OnePart[] ipart, jpart;
+            Particle.OnePart? ipart=null;
+            Particle.OnePart? jpart=null;
 
             // for 2d and axisymmetry only
             // xnew,xc passed to geometry routines which use or set z component
@@ -800,7 +801,12 @@ namespace cstest
                             if (DIM != 2) xnew[2] = x[2] + dtremain * v[2];
                             break;
                         case Enum4.PSURF:
-
+                            //dtremain = particles[i].dtremain;
+                            //xnew[0] = x[0] + dtremain * v[0];
+                            //xnew[1] = x[1] + dtremain * v[1];
+                            //if (DIM != 2) xnew[2] = x[2] + dtremain * v[2];
+                            //if (pflag > Enum4.PSURF) exclude = pflag - Enum4.PSURF - 1;
+                            //break;
                         default:
                             break;
                     }
@@ -930,287 +936,315 @@ namespace cstest
 
                         if (SURF != 0)
                         {
-                            // particle crosses cell face, reset xnew exactly on face of cell
-                            // so surface check occurs only for particle path within grid cell
-                            // xhold = saved xnew so can restore below if no surf collision
-
-                            if (outface != (int)Enum1.INTERIOR)
+                            nsurf = cells[icell].nsurf;
+                            if (nsurf != 0)
                             {
-                                xhold[0] = xnew[0];
-                                xhold[1] = xnew[1];
-                                if (DIM != 2) xhold[2] = xnew[2];
 
-                                xnew[0] = x[0] + frac * (xnew[0] - x[0]);
-                                xnew[1] = x[1] + frac * (xnew[1] - x[1]);
-                                if (DIM != 2) xnew[2] = x[2] + frac * (xnew[2] - x[2]);
 
-                                if (outface == (int)Enum1.XLO) xnew[0] = lo[0];
-                                else if (outface == (int)Enum1.XHI) xnew[0] = hi[0];
-                                else if (outface == (int)Enum1.YLO) xnew[1] = lo[1];
-                                else if (outface == (int)Enum1.YHI) xnew[1] = hi[1];
-                                else if (outface == (int)Enum1.ZLO) xnew[2] = lo[2];
-                                else if (outface == (int)Enum1.ZHI) xnew[2] = hi[2];
-                            }
-                            // for axisymmetric, dtsurf = time that particle stays in cell
-                            // used as arg to axi_line_intersect()
+                                // particle crosses cell face, reset xnew exactly on face of cell
+                                // so surface check occurs only for particle path within grid cell
+                                // xhold = saved xnew so can restore below if no surf collision
 
-                            if (DIM == 1)
-                            {
-                                if (outface == (int)Enum1.INTERIOR) dtsurf = dtremain;
-                                else dtsurf = dtremain * frac;
-                            }
-                            // check for collisions with triangles or lines in cell
-                            // find 1st surface hit via minparam
-                            // skip collisions with previous surf, but not for axisymmetric
-                            // not considered collision if 2 params are tied and one INSIDE surf
-                            // if collision occurs, perform collision with surface model
-                            // reset x,v,xnew,dtremain and continue single particle trajectory
-
-                            cflag = 0;
-                            minparam = 2.0;
-                            csurfs = cells[icell].csurfs;
-                            for (m = 0; m < nsurf; m++)
-                            {
-                                isurf = csurfs[m];
-                                if (DIM > 1)
+                                if (outface != (int)Enum1.INTERIOR)
                                 {
-                                    if (isurf == exclude) continue;
+                                    xhold[0] = xnew[0];
+                                    xhold[1] = xnew[1];
+                                    if (DIM != 2) xhold[2] = xnew[2];
+
+                                    xnew[0] = x[0] + frac * (xnew[0] - x[0]);
+                                    xnew[1] = x[1] + frac * (xnew[1] - x[1]);
+                                    if (DIM != 2) xnew[2] = x[2] + frac * (xnew[2] - x[2]);
+
+                                    if (outface == (int)Enum1.XLO) xnew[0] = lo[0];
+                                    else if (outface == (int)Enum1.XHI) xnew[0] = hi[0];
+                                    else if (outface == (int)Enum1.YLO) xnew[1] = lo[1];
+                                    else if (outface == (int)Enum1.YHI) xnew[1] = hi[1];
+                                    else if (outface == (int)Enum1.ZLO) xnew[2] = lo[2];
+                                    else if (outface == (int)Enum1.ZHI) xnew[2] = hi[2];
                                 }
-                                if (DIM == 3)
-                                {
-                                    tri = tris[isurf];
-                                    hitflag = Geometry.line_tri_intersect(x, xnew,
-                                                         pts[tri.p1].x, pts[tri.p2].x,
-                                                         pts[tri.p3].x, tri.norm, xc, out param, out side);
-                                }
-                                if (DIM == 2)
-                                {
-                                    line = lines[isurf];
-                                    hitflag = Geometry.line_line_intersect(x, xnew,
-                                                          pts[line.p1].x, pts[line.p2].x,
-                                                          line.norm, xc, out param, out side);
-                                }
+                                // for axisymmetric, dtsurf = time that particle stays in cell
+                                // used as arg to axi_line_intersect()
+
                                 if (DIM == 1)
                                 {
-                                    line = lines[isurf];
-                                    hitflag = Geometry.axi_line_intersect(dtsurf, x, v, outface, lo, hi,
-                                                         pts[line.p1].x, pts[line.p2].x,
-                                                         line.norm, (exclude == isurf) ? 0 : 1,
-                                                         xc, vc, out param, out side);
+                                    if (outface == (int)Enum1.INTERIOR) dtsurf = dtremain;
+                                    else dtsurf = dtremain * frac;
                                 }
-                                if (hitflag && param < minparam && side == (int)Enum3.OUTSIDE)
+                                // check for collisions with triangles or lines in cell
+                                // find 1st surface hit via minparam
+                                // skip collisions with previous surf, but not for axisymmetric
+                                // not considered collision if 2 params are tied and one INSIDE surf
+                                // if collision occurs, perform collision with surface model
+                                // reset x,v,xnew,dtremain and continue single particle trajectory
+
+                                cflag = 0;
+                                minparam = 2.0;
+                                csurfs = cells[icell].csurfs;
+                                tri = default(Surf.Tri);
+                                line = default(Surf.Line);
+                                for (m = 0; m < nsurf; m++)
                                 {
-                                    cflag = 1;
-                                    minparam = param;
-                                    minside = side;
-                                    minsurf = isurf;
-                                    minxc[0] = xc[0];
-                                    minxc[1] = xc[1];
-                                    if (DIM == 3) minxc[2] = xc[2];
+                                    isurf = csurfs[m];
+
+                                    if (DIM > 1)
+                                    {
+                                        if (isurf == exclude) continue;
+                                    }
+                                    if (DIM == 3)
+                                    {
+                                        tri = tris[isurf];
+                                        hitflag = Geometry.line_tri_intersect(x, xnew,
+                                                             pts[tri.p1].x, pts[tri.p2].x,
+                                                             pts[tri.p3].x, tri.norm, xc, out param, out side);
+                                    }
+                                    if (DIM == 2)
+                                    {
+                                        line = lines[isurf];
+                                        hitflag = Geometry.line_line_intersect(x, xnew,
+                                                              pts[line.p1].x, pts[line.p2].x,
+                                                              line.norm, xc, out param, out side);
+                                    }
                                     if (DIM == 1)
                                     {
-                                        minvc[1] = vc[1];
-                                        minvc[2] = vc[2];
+                                        line = lines[isurf];
+                                        hitflag = Geometry.axi_line_intersect(dtsurf, x, v, outface, lo, hi,
+                                                             pts[line.p1].x, pts[line.p2].x,
+                                                             line.norm, (exclude == isurf) ? 0 : 1,
+                                                             xc, vc, out param, out side);
+                                    }
+                                    if (hitflag && param < minparam && side == (int)Enum3.OUTSIDE)
+                                    {
+                                        cflag = 1;
+                                        minparam = param;
+                                        minside = side;
+                                        minsurf = isurf;
+                                        minxc[0] = xc[0];
+                                        minxc[1] = xc[1];
+                                        if (DIM == 3) minxc[2] = xc[2];
+                                        if (DIM == 1)
+                                        {
+                                            minvc[1] = vc[1];
+                                            minvc[2] = vc[2];
+                                        }
                                     }
                                 }
-                            }
 
-                            nscheck_one += nsurf;
+                                nscheck_one += nsurf;
 
-                            if (cflag != 0)
-                            {
-                                // NOTE: this check is no longer needed?
-                                if (minside == (int)Enum3.INSIDE)
+                                if (cflag != 0)
                                 {
-                                    string str = string.Format("Particle {0} on proc {1} hit inside of surf {2} on step {3} ",
-                                             i, me, minsurf, sparta.update.ntimestep);
-                                    sparta.error.one(str);
+                                    // NOTE: this check is no longer needed?
+                                    if (minside == (int)Enum3.INSIDE)
+                                    {
+                                        string str = string.Format("Particle {0} on proc {1} hit inside of surf {2} on step {3} ",
+                                                 i, me, minsurf, sparta.update.ntimestep);
+                                        sparta.error.one(str);
+                                    }
+
+                                    if (DIM == 3) tri = tris[minsurf];
+                                    if (DIM != 3) line = lines[minsurf];
+
+                                    // set x to collision point
+                                    // if axisymmetric, set v to remapped velocity at collision pt
+
+                                    x[0] = minxc[0];
+                                    x[1] = minxc[1];
+                                    if (DIM == 3) x[2] = minxc[2];
+                                    if (DIM == 1)
+                                    {
+                                        v[1] = minvc[1];
+                                        v[2] = minvc[2];
+                                    }
+                                    // perform surface collision using surface collision model
+                                    // surface chemistry may destroy particle or create new one
+                                    // must update particle's icell to current icell so that
+                                    //   if jpart is created, it will be added to correct cell
+                                    // if jpart, add new particle to this iteration via pstop++
+                                    // tally surface statistics if requested using iorig
+
+                                    Particle.OnePart p = particles[i];
+                                    p.icell = icell;
+                                    ipart = p;
+
+                                    dtremain *= 1.0 - minparam * frac;
+
+                                    if (nsurf_tally != 0)
+                                    {
+                                        iorig = particles[i];
+                                        //memcpy(&iorig, &particles[i], sizeof(Particle::OnePart));
+                                    }
+
+                                    if (DIM == 3)
+                                        jpart = sparta.surf.sc[tri.isc].
+                                          collide(ref ipart, tri.norm, dtremain, tri.isr);
+                                    if (DIM != 3)
+                                        jpart = sparta.surf.sc[line.isc].
+                                          collide(ref ipart, line.norm, dtremain, line.isr);
+
+                                    if (jpart != null)
+                                    {
+                                        Particle.OnePart pp = (Particle.OnePart)jpart;
+                                        particles = sparta.particle.particles;
+                                        x = particles[i].x;
+                                        v = particles[i].v;
+                                        pp.flag = (int)Enum4.PSURF + 1 + minsurf;
+                                        pp.dtremain = dtremain;
+                                        pp.weight = particles[i].weight;
+                                        pstop++;
+                                    }
+
+                                    if (nsurf_tally != 0)
+                                        for (m = 0; m < nsurf_tally; m++)
+                                            slist_active[m].surf_tally(minsurf, iorig, ipart, jpart);
+
+                                    // nstuck = consective iterations particle is immobile
+
+                                    if (minparam == 0.0) stuck_iterate++;
+                                    else stuck_iterate = 0;
+
+                                    // reset post-bounce xnew
+
+                                    xnew[0] = x[0] + dtremain * v[0];
+                                    xnew[1] = x[1] + dtremain * v[1];
+                                    if (DIM != 2) xnew[2] = x[2] + dtremain * v[2];
+
+                                    exclude = minsurf;
+                                    nscollide_one++;
+                                    if (ipart == null) particles[i].flag = (int)Enum4.PDISCARD;
+                                    else if (stuck_iterate < MAXSTUCK) continue;
+                                    else
+                                    {
+                                        particles[i].flag = (int)Enum4.PDISCARD;
+                                        nstuck++;
+                                    }
                                 }
-
-                                if (DIM == 3) tri = tris[minsurf];
-                                if (DIM != 3) line = lines[minsurf];
-
-                                // set x to collision point
-                                // if axisymmetric, set v to remapped velocity at collision pt
-
-                                x[0] = minxc[0];
-                                x[1] = minxc[1];
-                                if (DIM == 3) x[2] = minxc[2];
-                                if (DIM == 1)
+                                if (outface != (int)Enum1.INTERIOR)
                                 {
-                                    v[1] = minvc[1];
-                                    v[2] = minvc[2];
+                                    xnew[0] = xhold[0];
+                                    xnew[1] = xhold[1];
+                                    if (DIM != 2) xnew[2] = xhold[2];
                                 }
-                                // perform surface collision using surface collision model
-                                // surface chemistry may destroy particle or create new one
-                                // must update particle's icell to current icell so that
-                                //   if jpart is created, it will be added to correct cell
-                                // if jpart, add new particle to this iteration via pstop++
-                                // tally surface statistics if requested using iorig
-
-                                //ipart = particles[i];
-                                //ipart.icell = icell;
-                                //dtremain *= 1.0 - minparam * frac;
-
-                                //if (nsurf_tally)
-                                //    memcpy(&iorig, &particles[i], sizeof(Particle::OnePart));
-
-                                //if (DIM == 3)
-                                //    jpart = sparta.surf.sc[tri.isc].
-                                //      collide(ipart, tri.norm, dtremain, tri.isr);
-                                //if (DIM != 3)
-                                //    jpart = sparta.surf.sc[line.isc].
-                                //      collide(ipart, line.norm, dtremain, line.isr);
-
-                                //if (jpart)
-                                //{
-                                //    particles = particle.particles;
-                                //    x = particles[i].x;
-                                //    v = particles[i].v;
-                                //    jpart.flag = PSURF + 1 + minsurf;
-                                //    jpart.dtremain = dtremain;
-                                //    jpart.weight = particles[i].weight;
-                                //    pstop++;
-                                //}
-
-                                //if (nsurf_tally)
-                                //    for (m = 0; m < nsurf_tally; m++)
-                                //        slist_active[m].surf_tally(minsurf, &iorig, ipart, jpart);
-
-                                //// nstuck = consective iterations particle is immobile
-
-                                //if (minparam == 0.0) stuck_iterate++;
-                                //else stuck_iterate = 0;
-
-                                //// reset post-bounce xnew
-
-                                //xnew[0] = x[0] + dtremain * v[0];
-                                //xnew[1] = x[1] + dtremain * v[1];
-                                //if (DIM != 2) xnew[2] = x[2] + dtremain * v[2];
-
-                                //exclude = minsurf;
-                                //nscollide_one++;
-                                //if (ipart == NULL) particles[i].flag = PDISCARD;
-                                //else if (stuck_iterate < MAXSTUCK) continue;
-                                //else
-                                //{
-                                //    particles[i].flag = PDISCARD;
-                                //    nstuck++;
-                                //}
                             }
-                            if (outface != (int)Enum1.INTERIOR)
-                            {
-                                xnew[0] = xhold[0];
-                                xnew[1] = xhold[1];
-                                if (DIM != 2) xnew[2] = xhold[2];
-                            }
+                        }
+                        // break from advection loop if discarding particle
 
+                        if (particles[i].flag == (int)Enum4.PDISCARD) break;
+
+                        // no cell crossing and no surface collision
+                        // set final particle position to xnew, then break from advection loop
+                        // for axisymmetry, must first remap linear xnew and v
+                        // if migrating to another proc,
+                        //   flag as PDONE so new proc won't move it more on this step
+
+                        if (outface == (int)Enum1.INTERIOR)
+                        {
+                            if (DIM == 1) Console.WriteLine("axi_remap(xnew, v);");
+                            x[0] = xnew[0];
+                            x[1] = xnew[1];
+                            if (DIM == 3) x[2] = xnew[2];
+                            if (cells[icell].proc != me) particles[i].flag = (int)Enum4.PDONE;
+                            break;
                         }
 
+                        // particle crosses cell face
+                        // decrement dtremain in case particle is passed to another proc
+                        // for axisymmetry, must then remap linear x and v
+                        // reset particle x to be exactly on cell face
+                        // for axisymmetry, must reset xnew for next iteration since v changed
+
+                        dtremain *= 1.0 - frac;
+                        exclude = -1;
+
+                        x[0] += frac * (xnew[0] - x[0]);
+                        x[1] += frac * (xnew[1] - x[1]);
+                        if (DIM != 2) x[2] += frac * (xnew[2] - x[2]);
+                        if (DIM == 1) Console.WriteLine("axi_remap(x, v);");
+
+                        if (outface == (int)Enum1.XLO) x[0] = lo[0];
+                        else if (outface == (int)Enum1.XHI) x[0] = hi[0];
+                        else if (outface == (int)Enum1.YLO) x[1] = lo[1];
+                        else if (outface == (int)Enum1.YHI) x[1] = hi[1];
+                        else if (outface == (int)Enum1.ZLO) x[2] = lo[2];
+                        else if (outface == (int)Enum1.ZHI) x[2] = hi[2];
+
+                        if (DIM == 1)
+                        {
+                            xnew[0] = x[0] + dtremain * v[0];
+                            xnew[1] = x[1] + dtremain * v[1];
+                            xnew[2] = x[2] + dtremain * v[2];
+                        }
+                        // nflag = type of neighbor cell: child, parent, unknown, boundary
+                        // if parent, use id_find_child to identify child cell
+                        //   result of id_find_child could be unknown:
+                        //     particle is hitting face of a ghost child cell which extends
+                        //     beyond my ghost halo, cell on other side of face is a parent,
+                        //     it's child which the particle is in is entirely beyond my halo
+                        // if new cell is child and surfs exist, check if a split cell
+
+                        nflag = (Enum5)sparta.grid.neigh_decode(nmask, outface);
+                        icell_original = icell;
+
+                        switch (nflag)
+                        {
+                            case Enum5.NCHILD:
+                                icell = neigh[outface];
+                                if (DIM == 3 && SURF!=0)
+                                {
+                                    if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
+                                        icell = split3d(icell, x);
+                                }
+                                if (DIM < 3 && SURF != 0)
+                                {
+                                    if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
+                                        icell = split2d(icell, x);
+                                }
+                                break;
+                            case Enum5.NPARENT:
+                                icell = sparta.grid.id_find_child(neigh[outface], x);
+                                if (icell >= 0)
+                                {
+                                    if (DIM == 3 && SURF != 0)
+                                    {
+                                        if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
+                                            icell = split3d(icell, x);
+                                    }
+                                    if (DIM < 3 && SURF != 0)
+                                    {
+                                        if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
+                                            icell = split2d(icell, x);
+                                    }
+                                }
+                                break;
+                            case Enum5.NUNKNOWN:
+                                icell = -1;
+                                // neighbor cell is global boundary
+                                // tally boundary stats if requested using iorig
+                                // collide() updates x,v,xnew as needed due to boundary interaction
+                                //   may also update dtremain (piston BC)
+                                // for axisymmetric, must recalculate xnew since v may have changed
+                                // surface chemistry may destroy particle or create new one
+                                // if jpart, add new particle to this iteration via pstop++
+                                // OUTFLOW: exit with particle flag = PDISCARD
+                                // PERIODIC: new cell via same logic as above for child/parent/unknown
+                                // other = reflected particle stays in same grid cell
+                                break;
+                            case Enum5.NPBCHILD:
+                                break;
+                            case Enum5.NPBPARENT:
+                                break;
+                            case Enum5.NPBUNKNOWN:
+                                break;
+                            case Enum5.NBOUND:
+                                break;
+                            default:
+                                break;
+                        }
+
+
+
                     }
-                    // break from advection loop if discarding particle
 
-                    if (particles[i].flag == (int)Enum4.PDISCARD) break;
 
-                    // no cell crossing and no surface collision
-                    // set final particle position to xnew, then break from advection loop
-                    // for axisymmetry, must first remap linear xnew and v
-                    // if migrating to another proc,
-                    //   flag as PDONE so new proc won't move it more on this step
-
-                    if (outface == (int)Enum1.INTERIOR)
-                    {
-                        if (DIM == 1) Console.WriteLine("axi_remap(xnew, v);");
-                        x[0] = xnew[0];
-                        x[1] = xnew[1];
-                        if (DIM == 3) x[2] = xnew[2];
-                        if (cells[icell].proc != me) particles[i].flag = (int)Enum4.PDONE;
-                        break;
-                    }
-
-                    // particle crosses cell face
-                    // decrement dtremain in case particle is passed to another proc
-                    // for axisymmetry, must then remap linear x and v
-                    // reset particle x to be exactly on cell face
-                    // for axisymmetry, must reset xnew for next iteration since v changed
-
-                    dtremain *= 1.0 - frac;
-                    exclude = -1;
-
-                    x[0] += frac * (xnew[0] - x[0]);
-                    x[1] += frac * (xnew[1] - x[1]);
-                    if (DIM != 2) x[2] += frac * (xnew[2] - x[2]);
-                    if (DIM == 1) Console.WriteLine("axi_remap(x, v);");
-
-                    if (outface == (int)Enum1.XLO) x[0] = lo[0];
-                    else if (outface == (int)Enum1.XHI) x[0] = hi[0];
-                    else if (outface == (int)Enum1.YLO) x[1] = lo[1];
-                    else if (outface == (int)Enum1.YHI) x[1] = hi[1];
-                    else if (outface == (int)Enum1.ZLO) x[2] = lo[2];
-                    else if (outface == (int)Enum1.ZHI) x[2] = hi[2];
-
-                    if (DIM == 1)
-                    {
-                        xnew[0] = x[0] + dtremain * v[0];
-                        xnew[1] = x[1] + dtremain * v[1];
-                        xnew[2] = x[2] + dtremain * v[2];
-                    }
-                    // nflag = type of neighbor cell: child, parent, unknown, boundary
-                    // if parent, use id_find_child to identify child cell
-                    //   result of id_find_child could be unknown:
-                    //     particle is hitting face of a ghost child cell which extends
-                    //     beyond my ghost halo, cell on other side of face is a parent,
-                    //     it's child which the particle is in is entirely beyond my halo
-                    // if new cell is child and surfs exist, check if a split cell
-
-                    //nflag = sparta.grid.neigh_decode(nmask, outface);
-                    //icell_original = icell;
-
-                    //switch (nflag)
-                    //{
-                    //    case Enum5.NCHILD:
-                    //        icell = neigh[outface];
-                    //        if (DIM == 3 && SURF)
-                    //        {
-                    //            if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
-                    //                icell = split3d(icell, x);
-                    //        }
-                    //        if (DIM < 3 && SURF)
-                    //        {
-                    //            if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
-                    //                icell = split2d(icell, x);
-                    //        }
-                    //        break;
-                    //    case Enum5.NPARENT:
-                    //        icell = grid.id_find_child(neigh[outface], x);
-                    //        if (icell >= 0)
-                    //        {
-                    //            if (DIM == 3 && SURF)
-                    //            {
-                    //                if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
-                    //                    icell = split3d(icell, x);
-                    //            }
-                    //            if (DIM < 3 && SURF)
-                    //            {
-                    //                if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
-                    //                    icell = split2d(icell, x);
-                    //            }
-                    //        }
-                    //        break;
-                    //    case Enum5.NUNKNOWN:
-                    //        icell = -1;
-                    //        break;
-                    //    case Enum5.NPBCHILD:
-                    //        break;
-                    //    case Enum5.NPBPARENT:
-                    //        break;
-                    //    case Enum5.NPBUNKNOWN:
-                    //        break;
-                    //    case Enum5.NBOUND:
-                    //        break;
-                    //    default:
-                    //        break;
-                    //}
 
 
                 }

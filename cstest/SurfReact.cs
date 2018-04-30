@@ -60,7 +60,12 @@ namespace cstest
         {
             nsingle = ntotal = 0;
         }
-        //public virtual int react(Particle::OnePart*&, double*, Particle::OnePart*&) = 0;
+        public virtual int react(ref Particle.OnePart? ip,double[] norm,out Particle.OnePart? jp)
+        {
+            Console.WriteLine("SurfReact virtual react");
+            jp=null;
+            return 0;
+        }
 
         //public void tally_update();
         //public double compute_vector(int i);

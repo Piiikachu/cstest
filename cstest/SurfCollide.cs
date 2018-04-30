@@ -1,4 +1,6 @@
-﻿namespace cstest
+﻿using System;
+
+namespace cstest
 {
     public class SurfCollide
     {
@@ -38,8 +40,11 @@
         {
             nsingle = ntotal = 0;
         }
-        //virtual Particle::OnePart* collide(Particle::OnePart*&, double*,
-        //                                   double &, int) = 0;
+        public virtual Particle.OnePart collide(ref Particle.OnePart? ip, double[] norm,double dtremain, int isr)
+        {
+            Console.WriteLine("SurfCollide virtual collide");
+            return default(Particle.OnePart);
+        }
 
         //virtual void dynamic() { }
         //      void tally_update();

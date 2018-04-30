@@ -108,11 +108,13 @@ namespace cstest
         public virtual void compute_per_grid() { }
         public virtual void compute_per_surf() { }
         public virtual void clear() { }
-        //public virtual void surf_tally(int, Particle::OnePart*,
-        //                        Particle::OnePart*, Particle::OnePart*)
-        //{ }
-        //public virtual void boundary_tally(int, int, Particle::OnePart*,
-        //                            Particle::OnePart*, Particle::OnePart*)
+        public virtual void surf_tally(int isurf, Particle.OnePart iorig,
+                             Particle.OnePart? ip, Particle.OnePart? jp)
+        {
+            System.Console.WriteLine("Copmute virtual surf_tally");
+        }
+        //public virtual void boundary_tally(int, int, Particle.OnePart,
+        //                            Particle.OnePart, Particle.OnePart)
         //{ }
         //
         //public virtual int query_tally_grid(int, double[,]&, int*&) { return 0; }

@@ -57,6 +57,8 @@ namespace cstest
             [FieldOffset(76)]public int flag;               // used for migration status
             [FieldOffset(80)]public double dtremain;        // portion of move timestep remaining
             [FieldOffset(88)] public double weight;          // particle or cell weight, if weighting enabled
+
+            
         }
 
         public struct OnePartRestart

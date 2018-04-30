@@ -10,7 +10,7 @@ namespace cstest
 {
     public partial class Grid
     {
-        int id_find_child(int iparent, double[] x)
+        public int id_find_child(int iparent, double[] x)
         {
             ParentCell p = pcells[iparent];
             double[] lo = p.lo;
