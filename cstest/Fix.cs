@@ -101,7 +101,7 @@ namespace cstest
         public virtual void setup() { System.Console.WriteLine("fix virtual setup"); }
 
         public virtual void start_of_step() { System.Console.WriteLine("fix virtual start_of_step"); }
-        //public virtual void end_of_step() { }
+        public virtual void end_of_step() { System.Console.WriteLine("fix virtual end_of_step"); }
 
         public virtual void add_particle(int index, double temp_thermal, double temp_rot, double temp_vib, double[] vstream)
         {

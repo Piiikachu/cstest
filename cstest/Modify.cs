@@ -71,7 +71,12 @@ namespace cstest
             for (int i = 0; i < n_start_of_step; i++)
                 fix[list_start_of_step[i]].start_of_step();
         }
-        //public virtual void end_of_step();
+        public virtual void end_of_step()
+        {
+            for (int i = 0; i < n_end_of_step; i++)
+                if (sparta.update.ntimestep % end_of_step_every[i] == 0)
+                    fix[list_end_of_step[i]].end_of_step();
+        }
 
         //public virtual void add_grid_one(int, int);
         public virtual int pack_grid_one(int icell,ref StringBuilder buf, int memflag)

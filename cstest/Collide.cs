@@ -101,7 +101,7 @@ namespace cstest
             {
                 if (oldgroups == 1)
                 {
-                    //memory->destroy(plist);
+                    //memory.destroy(plist);
                     npmax = 0;
                     plist = null;
                 }
@@ -109,9 +109,9 @@ namespace cstest
                 {
                     //delete[] ngroup;
                     //delete[] maxgroup;
-                    //for (int i = 0; i < oldgroups; i++) memory->destroy(glist[i]);
+                    //for (int i = 0; i < oldgroups; i++) memory.destroy(glist[i]);
                     //delete[] glist;
-                    //memory->destroy(gpair);
+                    //memory.destroy(gpair);
                     ngroup = null;
                     maxgroup = null;
                     glist = null;
@@ -122,7 +122,7 @@ namespace cstest
                 {
                     npmax = DELTAPART;
                     plist = new int[npmax];
-                    //memory->create(plist, npmax, "collide:plist");
+                    //memory.create(plist, npmax, "collide:plist");
                 }
                 if (ngroups > 1)
                 {
@@ -133,10 +133,10 @@ namespace cstest
                     {
                         maxgroup[i] = DELTAPART;
                         glist[i] = new int[DELTAPART];
-                        //memory->create(glist[i], DELTAPART, "collide:glist");
+                        //memory.create(glist[i], DELTAPART, "collide:glist");
                     }
                     gpair = new int[ngroups * ngroups, 3];
-                    //memory->create(gpair, ngroups * ngroups, 3, "collide:gpair");
+                    //memory.create(gpair, ngroups * ngroups, 3, "collide:gpair");
                 }
             }
 
@@ -146,9 +146,9 @@ namespace cstest
 
             if (ngroups != oldgroups)
             {
-                //memory->destroy(vremax);
-                //memory->destroy(vremax_initial);
-                //memory->destroy(remain);
+                //memory.destroy(vremax);
+                //memory.destroy(vremax_initial);
+                //memory.destroy(remain);
                 nglocal = sparta.grid.nlocal;
                 nglocalmax = nglocal;
                 vremax = new double[nglocalmax][,];
@@ -158,8 +158,8 @@ namespace cstest
                 }
                 
                 vremax_initial = new double[ngroups, ngroups];
-                //memory->create(vremax, nglocalmax, ngroups, ngroups, "collide:vremax");
-                //memory->create(vremax_initial, ngroups, ngroups, "collide:vremax_initial");
+                //memory.create(vremax, nglocalmax, ngroups, ngroups, "collide:vremax");
+                //memory.create(vremax_initial, ngroups, ngroups, "collide:vremax_initial");
                 if (remainflag != 0)
                 {
                     remain = new double[nglocalmax][,]; 
@@ -168,7 +168,7 @@ namespace cstest
                         remain[i] = new double[ngroups, ngroups];
                     }
                 }
-                //memory->create(remain, nglocalmax, ngroups, ngroups, "collide:remain");
+                //memory.create(remain, nglocalmax, ngroups, ngroups, "collide:remain");
 
                 for (int igroup = 0; igroup < ngroups; igroup++)
                     for (int jgroup = 0; jgroup < ngroups; jgroup++)
@@ -187,9 +187,9 @@ namespace cstest
             if (recombflag != 0)
             {
                 int nspecies = sparta.particle.nspecies;
-                //memory->destroy(recomb_ijflag);
+                //memory.destroy(recomb_ijflag);
                 recomb_ijflag = new int[nspecies, nspecies];
-                //memory->create(recomb_ijflag, nspecies, nspecies, "collide:recomb_ijflag");
+                //memory.create(recomb_ijflag, nspecies, nspecies, "collide:recomb_ijflag");
                 for (int i = 0; i < nspecies; i++)
                     for (int j = 0; j < nspecies; j++)
                         //recomb_ijflag[i,j] = sparta.react.recomb_exist(i, j);
@@ -250,7 +250,59 @@ namespace cstest
                         if (remainflag!=0) remain[icell][igroup,jgroup] = 0.0;
                     }
         }
-        //public virtual void collisions();
+        public virtual void collisions()
+        {
+            // if requested, reset vrwmax & remain
+
+            if (sparta.update.ntimestep == vre_next)
+            {
+                reset_vremax();
+                vre_next += vre_every;
+            }
+
+            // counters
+
+            ncollide_one = nattempt_one = nreact_one = 0;
+            ndelete = 0;
+
+            // perform collisions without or with ambipolar approximation
+            // one variant is optimized for a single group
+
+            if (ambiflag==0)
+            {
+                Console.WriteLine("Collide.collisions()->ambiflag==0");
+                //if (nearcp == 0)
+                //{
+                //    if (ngroups == 1) collisions_one < 0 > ();
+                //    else collisions_group < 0 > ();
+                //}
+                //else
+                //{
+                //    if (ngroups == 1) collisions_one < 1 > ();
+                //    else collisions_group < 1 > ();
+                //}
+            }
+            else
+            {
+                //if (ngroups == 1) collisions_one_ambipolar();
+                //else collisions_group_ambipolar();
+                Console.WriteLine("Collide.collisions()->ambiflag!=0");
+            }
+
+            // remove any particles deleted in chemistry reactions
+            // if reactions occurred, particles are no longer sorted
+            // e.g. compress_reactions may have reallocated particle.next vector
+
+            if (ndelete!=0) sparta.particle.compress_reactions(ndelete, dellist);
+            if (sparta.react !=null) sparta.particle.sorted = 0;
+
+            // accumulate running totals
+
+            nattempt_running += nattempt_one;
+            ncollide_running += ncollide_one;
+            nreact_running += nreact_one;
+            Console.WriteLine("Collide virtual collisions");
+        }
 
         public virtual double vremax_init(int igroup, int jgroup)
         {
@@ -439,7 +491,7 @@ namespace cstest
         //    if (ngroup[igroup] == maxgroup[igroup])
         //    {
         //        maxgroup[igroup] += DELTAPART;
-        //        memory->grow(glist[igroup], maxgroup[igroup], "collide:grouplist");
+        //        memory.grow(glist[igroup], maxgroup[igroup], "collide:grouplist");
         //    }
         //    glist[igroup][ngroup[igroup]++] = n;
         //}

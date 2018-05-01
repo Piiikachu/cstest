@@ -22,7 +22,7 @@ namespace cstest
 
         public void init()
         {
-
+            Console.WriteLine("Comm init");
         }
         public void reset_neighbors()
         {

@@ -47,7 +47,11 @@ namespace cstest
         }
 
         //virtual void dynamic() { }
-        //      void tally_update();
+        public void tally_update()
+        {
+            ntotal += nsingle;
+            nsingle = 0;
+        }
         //      double compute_vector(int i);
 
         public int copy;

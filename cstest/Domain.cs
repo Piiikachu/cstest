@@ -160,8 +160,125 @@ namespace cstest
         }
         //public int periodic(int*);
         //public void boundary_modify(int, char**);
-        //public virtual int collide(Particle::OnePart*&, int, int, double*, double &,
-        //             Particle::OnePart*&);
+        public virtual int collide(Particle.OnePart? ip, int face, int icell, double[] xnew,  double dtremain,
+                     Particle.OnePart? jp)
+        {
+            Particle.OnePart p;
+            jp = null;
+            if (ip!=null)
+            {
+                p = (Particle.OnePart)ip;
+            }
+            else
+            {
+                p = new Particle.OnePart();
+            }
+            switch (bflag[face])
+            {
+
+                // outflow boundary, particle deleted by caller
+
+                case (int)Enum2.OUTFLOW:
+                    return (int)Enum2.OUTFLOW;
+
+                // periodic boundary
+                // set x to be on periodic box face
+                // adjust xnew by periodic box length
+
+                case (int)Enum2.PERIODIC:
+                    {
+
+                        double[] x = p.x;
+
+                        switch (face)
+                        {
+                            case (int)Enum1.XLO:
+                                x[0] = boxhi[0];
+                                xnew[0] += xprd;
+                                break;
+                            case (int)Enum1.XHI:
+                                x[0] = boxlo[0];
+                                xnew[0] -= xprd;
+                                break;
+                            case (int)Enum1.YLO:
+                                x[1] = boxhi[1];
+                                xnew[1] += yprd;
+                                break;
+                            case (int)Enum1.YHI:
+                                x[1] = boxlo[1];
+                                xnew[1] -= yprd;
+                                break;
+                            case (int)Enum1.ZLO:
+                                x[2] = boxhi[2];
+                                xnew[2] += zprd;
+                                break;
+                            case (int)Enum1.ZHI:
+                                x[2] = boxlo[2];
+                                xnew[2] -= zprd;
+                                break;
+                        }
+
+                        return (int)Enum2.PERIODIC;
+                    }
+
+                // specular reflection boundary
+                // adjust xnew and velocity
+
+                case (int)Enum2.REFLECT:
+                    {
+                        double[] v = p.v;
+                        double[] lo = sparta.grid.cells[icell].lo;
+                        double[] hi = sparta.grid.cells[icell].hi;
+                        int dim = face / 2;
+
+                        if (face % 2 == 0)
+                        {
+                            xnew[dim] = lo[dim] + (lo[dim] - xnew[dim]);
+                            v[dim] = -v[dim];
+                        }
+                        else
+                        {
+                            xnew[dim] = hi[dim] - (xnew[dim] - hi[dim]);
+                            v[dim] = -v[dim];
+                        }
+
+                        return (int)Enum2.REFLECT;
+                    }
+
+                // treat global boundary as a surface
+                // particle velocity is changed by surface collision model
+                // dtremain may be changed by collision model
+                // reset all components of xnew, in case dtremain changed
+                // if axisymmetric, caller will reset again, including xnew[2]
+
+                case (int)Enum2.SURFACE:
+                    {
+                        double[] tmp = new double[3];
+                        for (int i = 0; i < 3; i++)
+                        {
+                            tmp[i] = norm[face, i];
+                        }
+
+                        jp = sparta.surf.sc[surf_collide[face]].
+                          collide(ref ip, tmp, dtremain, surf_react[face]);
+
+                        if (ip!=null)
+                        {
+                            double[] x = p.x;
+                            double[] v = p.v;
+                            xnew[0] = x[0] + dtremain * v[0];
+                            xnew[1] = x[1] + dtremain * v[1];
+                            if (dimension == 3) xnew[2] = x[2] + dtremain * v[2];
+                        }
+
+                        return (int)Enum2.SURFACE;
+                    }
+
+            }
+            ip = p;
+            return 0;
+        } 
+
         public virtual void uncollide(int face, double[] x)
         {
             switch ((Enum1)face)

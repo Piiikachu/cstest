@@ -67,7 +67,11 @@ namespace cstest
             return 0;
         }
 
-        //public void tally_update();
+        public void tally_update()
+        {
+            ntotal += nsingle;
+            nsingle = 0;
+        }
         //public double compute_vector(int i);
 
         protected FileStream fp;

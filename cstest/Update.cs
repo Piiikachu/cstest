@@ -261,7 +261,7 @@ namespace cstest
                 {
                     sparta.particle.sort();
                     sparta.timer.stamp((int)Timer.Enum1.TIME_SORT);
-                    Console.WriteLine("sparta.collide.collisions();");
+                    sparta.collide.collisions();
                     
                     sparta.timer.stamp((int)Timer.Enum1.TIME_COLLIDE);
                 }
@@ -270,7 +270,7 @@ namespace cstest
 
                 if (n_end_of_step!=0)
                 {
-                    Console.WriteLine("sparta.modify.end_of_step();");
+                    sparta.modify.end_of_step();
                     
                     sparta.timer.stamp((int)Timer.Enum1.TIME_MODIFY);
                 }
@@ -584,7 +584,8 @@ namespace cstest
         }
         void collide_react_update()
         {
-            Console.WriteLine("Update.collide_react_update");
+            for (int i = 0; i < nsc; i++) sc[i].tally_update();
+            for (int i = 0; i < nsr; i++) sr[i].tally_update();
         }
 
         int bounce_setup()
@@ -672,7 +673,7 @@ namespace cstest
             bool hitflag = false;
             int m, icell, icell_original, nmask, outface, bflag, itmp;
             int side = 0, minside = 0, minsurf = 0, nsurf = 0, cflag, isurf, exclude, stuck_iterate;
-            int pstart = 0, pstop = 0, entryexit, any_entryexit;
+            int pstart = 0, pstop = 0, entryexit, any_entryexit=0;
             Enum4 pflag;
             Enum5 nflag;
             int[] csurfs;
@@ -1228,42 +1229,214 @@ namespace cstest
                                 // PERIODIC: new cell via same logic as above for child/parent/unknown
                                 // other = reflected particle stays in same grid cell
                                 break;
-                            case Enum5.NPBCHILD:
-                                break;
-                            case Enum5.NPBPARENT:
-                                break;
-                            case Enum5.NPBUNKNOWN:
-                                break;
-                            case Enum5.NBOUND:
-                                break;
+                            
                             default:
+                                ipart = particles[i];
+
+                                if (nboundary_tally!=0)
+                                {
+                                    iorig = particles[i];
+                                    //memcpy(&iorig, &particles[i], sizeof(Particle::OnePart));
+                                }
+
+                                bflag = sparta.domain.collide(ipart, outface, icell, xnew, dtremain, jpart);
+
+                                if (jpart!=null)
+                                {
+                                    particles = sparta.particle.particles;
+                                    x = particles[i].x;
+                                    v = particles[i].v;
+                                }
+
+                                if (nboundary_tally!=0)
+                                    for (m = 0; m < nboundary_tally; m++)
+                                        blist_active[m].boundary_tally(outface, bflag, iorig, ipart, jpart);
+
+                                if (DIM == 1)
+                                {
+                                    xnew[0] = x[0] + dtremain * v[0];
+                                    xnew[1] = x[1] + dtremain * v[1];
+                                    xnew[2] = x[2] + dtremain * v[2];
+                                }
+
+                                if (bflag == (int)Enum2.OUTFLOW)
+                                {
+                                    particles[i].flag = (int)Enum4.PDISCARD;
+                                    nexit_one++;
+                                    break;
+
+                                }
+                                else if (bflag == (int)Enum2.PERIODIC)
+                                {
+                                    if (nflag == Enum5.NPBCHILD)
+                                    {
+                                        icell = neigh[outface];
+                                        if (DIM == 3 && SURF!=0)
+                                        {
+                                            if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
+                                                icell = split3d(icell, x);
+                                        }
+                                        if (DIM < 3 && SURF != 0)
+                                        {
+                                            if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
+                                                icell = split2d(icell, x);
+                                        }
+                                    }
+                                    else if (nflag == Enum5.NPBPARENT)
+                                    {
+                                        icell = sparta.grid.id_find_child(neigh[outface], x);
+                                        if (icell >= 0)
+                                        {
+                                            if (DIM == 3 && SURF != 0)
+                                            {
+                                                if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
+                                                    icell = split3d(icell, x);
+                                            }
+                                            if (DIM < 3 && SURF != 0)
+                                            {
+                                                if (cells[icell].nsplit > 1 && cells[icell].nsurf >= 0)
+                                                    icell = split2d(icell, x);
+                                            }
+                                        }
+                                        else sparta.domain.uncollide(outface, x);
+                                    }
+                                    else if (nflag == Enum5.NPBUNKNOWN)
+                                    {
+                                        icell = -1;
+                                        sparta.domain.uncollide(outface, x);
+                                    }
+
+                                }
+                                else if (bflag == (int)Enum2.SURFACE)
+                                {
+                                    if (ipart == null)
+                                    {
+                                        particles[i].flag = (int)Enum4.PDISCARD;
+                                        break;
+                                    }
+                                    else if (jpart!=null)
+                                    {
+                                        Particle.OnePart p = (Particle.OnePart)jpart;
+                                        p.flag = (int)Enum4.PSURF;
+                                        p.dtremain = dtremain;
+                                        p.weight = particles[i].weight;
+                                        jpart = p;
+                                        pstop++;
+                                    }
+                                    nboundary_one++;
+                                    ntouch_one--;    // decrement here since will increment below
+
+                                }
+                                else
+                                {
+                                    nboundary_one++;
+                                    ntouch_one--;    // decrement here since will increment below
+                                }
                                 break;
                         }
 
+                        // neighbor cell is unknown
+                        // reset icell to original icell which must be a ghost cell
+                        // exit with particle flag = PEXIT, so receiver can identify neighbor
 
+                        if (icell < 0)
+                        {
+                            icell = icell_original;
+                            particles[i].flag = (int)Enum4.PEXIT;
+                            particles[i].dtremain = dtremain;
+                            entryexit = 1;
+                            break;
+                        }
+
+                        // if nsurf < 0, new cell is EMPTY ghost
+                        // exit with particle flag = PENTRY, so receiver can continue move
+
+                        if (cells[icell].nsurf < 0)
+                        {
+                            particles[i].flag = (int)Enum4.PENTRY;
+                            particles[i].dtremain = dtremain;
+                            entryexit = 1;
+                            break;
+                        }
+
+                        // move particle into new grid cell for next stage of move
+
+                        lo = cells[icell].lo;
+                        hi = cells[icell].hi;
+                        neigh = cells[icell].neigh;
+                        nmask = cells[icell].nmask;
+                        ntouch_one++;
 
                     }
+                    // END of while loop over advection of single particle
 
+                    // move is complete, or as much as can be done on this proc
+                    // update particle's grid cell
+                    // if particle flag set, add particle to migrate list
+                    // if discarding, migration will delete particle
 
+                    particles[i].icell = icell;
 
+                    if (particles[i].flag != (int)Enum4.PKEEP)
+                    {
+                        mlist[nmigrate++] = i;
+                        if (particles[i].flag != (int)Enum4.PDISCARD)
+                        {
+                            if (cells[icell].proc == me)
+                            {
+                                string str=string.Format("Particle {0} on proc {1} being sent to self on step {2}",
+                                        i, me, sparta.update.ntimestep);
+                                sparta.error.one( str);
+                            }
+                            ncomm_one++;
+                        }
+                    }
 
                 }
 
+                // END of pstart/pstop loop advecting all particles
 
+                // if gridcut >= 0.0, check if another iteration of move is required
+                // only the case if some particle flag = PENTRY/PEXIT
+                //   in which case perform particle migration
+                // if not, move is done and final particle comm will occur in run()
+                // if iterating, reset pstart/pstop and extend migration list if necessary
+
+                if (sparta.grid.cutoff < 0.0) break;
+
+                sparta.mpi.MPI_Allreduce(ref entryexit, ref any_entryexit, 1, MPI.MPI_INT, MPI.MPI_MAX, sparta.world);
+                if (any_entryexit!=0)
+                {
+                    sparta.timer.stamp((int)Timer.Enum1.TIME_MOVE);
+                    pstart = sparta.comm.migrate_particles(nmigrate, mlist);
+                    sparta.timer.stamp((int)Timer.Enum1.TIME_COMM);
+                    pstop = sparta.particle.nlocal;
+                    if (pstop - pstart > maxmigrate)
+                    {
+                        maxmigrate = pstop - pstart;
+                        //memory.destroy(mlist);
+                        //memory.create(mlist, maxmigrate, "particle:mlist");
+                        mlist = new int[maxmigrate];
+                    }
+                }
+                else break;
+
+                // END of single move/migrate iteration
 
 
 
             }
 
 
-            //      typedef void (Update::* FnPtr2) (double, double*, double*);
-            //FnPtr2 moveperturb;        // ptr to moveperturb method
-
-            //      // variants of moveperturb method
-            //      // adjust end-of-move x,v due to perturbation on straight-line advection
 
 
         }
+        //      typedef void (Update::* FnPtr2) (double, double*, double*);
+        //FnPtr2 moveperturb;        // ptr to moveperturb method
+
+        //      // variants of moveperturb method
+        //      // adjust end-of-move x,v due to perturbation on straight-line advection
+
         int perturbflag;
         void gravity2d(double dt, double[] x, double[] v)
         {

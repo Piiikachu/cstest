@@ -187,7 +187,64 @@ namespace cstest
 
             sorted = 0;
         }
-        //public void compress_reactions(int, int*);
+        public void compress_reactions(int ndelete, int[] dellist)
+        {
+            int i;
+
+            int nbytes = Marshal.SizeOf(typeof(OnePart));
+
+            // reallocate next list as needed
+
+            if (maxsort < maxlocal)
+            {
+                maxsort = maxlocal;
+                //memory->destroy(next);
+                //memory->create(next, maxsort, "particle:next");
+                next = new int[maxsort];
+            }
+
+            // use next as a scratch vector
+            // is always defined when performing collisions and thus gas reactions
+            // next is only used for upper locs from nlocal-ndelete to nlocal
+            // next[i] = current index of atom originally at index i, when i >= nlocal
+            // next[i] = original index of atom currently at index i, when i <= nlocal
+
+            int upper = nlocal - ndelete;
+            for (i = upper; i < nlocal; i++) next[i] = i;
+
+            // i = current index of atom to remove, even if it previously moved
+
+            if (ncustom==0)
+            {
+                for (int m = 0; m < ndelete; m++)
+                {
+                    i = dellist[m];
+                    if (i >= nlocal) i = next[i];
+                    nlocal--;
+                    if (i == nlocal) continue;
+                    //memcpy(&particles[i], &particles[nlocal], nbytes);
+                    particles[i] = particles[nlocal];
+                    if (i >= upper) next[i] = next[nlocal];
+                    next[next[nlocal]] = i;
+                }
+
+            }
+            else
+            {
+                for (int m = 0; m < ndelete; m++)
+                {
+                    i = dellist[m];
+                    if (i >= nlocal) i = next[i];
+                    nlocal--;
+                    if (i == nlocal) continue;
+                    //memcpy(&particles[i], &particles[nlocal], nbytes);
+                    particles[i] = particles[nlocal];
+                    copy_custom(i, nlocal);
+                    if (i >= upper) next[i] = next[nlocal];
+                    next[next[nlocal]] = i;
+                }
+            }
+        }
         public void sort()
         {
             sorted = 1;

@@ -99,7 +99,7 @@ namespace cstest
             kokkos_flag = 0;
             copymode = 0;
         }
-        public virtual void init() { }
+        public virtual void init() { System.Console.WriteLine("Compute virtual init"); }
          
         public virtual double compute_scalar() { return 0.0; }
         public virtual void compute_vector() { }
@@ -113,10 +113,12 @@ namespace cstest
         {
             System.Console.WriteLine("Copmute virtual surf_tally");
         }
-        //public virtual void boundary_tally(int, int, Particle.OnePart,
-        //                            Particle.OnePart, Particle.OnePart)
-        //{ }
-        //
+        public virtual void boundary_tally(int iface, int istyle, Particle.OnePart iorig,
+                                    Particle.OnePart? ip, Particle.OnePart? jp)
+        {
+            System.Console.WriteLine("Copmute virtual boundary_tally");
+        }
+
         //public virtual int query_tally_grid(int, double[,]&, int*&) { return 0; }
         //public virtual double post_process_grid(int, int, int, double[,], int*,
         //                                 double[], int)
