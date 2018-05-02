@@ -270,17 +270,17 @@ namespace cstest
 
             if (ambiflag==0)
             {
-                Console.WriteLine("Collide.collisions()->ambiflag==0");
-                //if (nearcp == 0)
-                //{
-                //    if (ngroups == 1) collisions_one < 0 > ();
-                //    else collisions_group < 0 > ();
-                //}
-                //else
-                //{
-                //    if (ngroups == 1) collisions_one < 1 > ();
-                //    else collisions_group < 1 > ();
-                //}
+                //Console.WriteLine("Collide.collisions()->ambiflag==0");
+                if (nearcp == 0)
+                {
+                    if (ngroups == 1) collisions_one(0);
+                    else collisions_group(0);
+                }
+                else
+                {
+                    if (ngroups == 1) collisions_one (1);
+                    else collisions_group(1);
+                }
             }
             else
             {
@@ -308,13 +308,21 @@ namespace cstest
         {
             return 0;
         }
-        //public virtual double attempt_collision(int, int, double) = 0;
-        //public virtual double attempt_collision(int, int, int, double) = 0;
+        public virtual double attempt_collision(int cell, int np, double volume)
+        {
+            Console.WriteLine("Collide virtual attempt_collision1");
+            return 0;
+        }
+        public virtual double attempt_collision(int icell, int igroup, int jgroup, double volume)
+        {
+            Console.WriteLine("Collide virtual attempt_collision2");
+            return 0;
+        }
         //public virtual int test_collision(int, int, int,
-        //                Particle::OnePart*, Particle::OnePart*) = 0;
-        //public virtual void setup_collision(Particle::OnePart*, Particle::OnePart*) = 0;
-        //public virtual int perform_collision(Particle::OnePart*&, Particle::OnePart*&,
-        //                               Particle::OnePart*&) = 0;
+        //                Particle.OnePart, Particle.OnePart) = 0;
+        //public virtual void setup_collision(Particle.OnePart, Particle.OnePart) = 0;
+        //public virtual int perform_collision(Particle.OnePart&, Particle.OnePart&,
+        //                               Particle.OnePart&) = 0;
 
         //public virtual double extract(int, const char*) {return 0.0;
 
@@ -484,7 +492,7 @@ namespace cstest
         protected int nelectron;                // # of ambipolar electrons in elist
         protected int maxelectron;              // max # elist can hold
         protected List<Particle.OnePart> elist;     // list of ambipolar electrons
-                                      // for one grid cell or pair of groups in cell
+                                                    // for one grid cell or pair of groups in cell
 
         //inline void addgroup(int igroup, int n)
         //{
@@ -496,16 +504,248 @@ namespace cstest
         //    glist[igroup][ngroup[igroup]++] = n;
         //}
 
-        //template<int> void collisions_one();
+        public void collisions_one(int NEARCP)
+        {
+            int i, j, k, m, n, ip, np;
+            int nattempt, reactflag;
+            double attempt, volume;
+            Particle.OnePart ipart,jpart,*kpart;
+
+            // loop over cells I own
+
+            Grid.ChildInfo[] cinfo = sparta.grid.cinfo;
+
+            Particle.OnePart[] particles = sparta.particle.particles;
+            int[] next = sparta.particle.next;
+
+            for (int icell = 0; icell < nglocal; icell++)
+            {
+                np = cinfo[icell].count;
+                if (np <= 1) continue;
+
+                if (NEARCP!=0)
+                {
+                    if (np > max_nn)
+                    {
+                        //realloc_nn(np, nn_last_partner);
+                        nn_last_partner = new int[np];
+                    }
+
+                    //memset(nn_last_partner, 0, np * sizeof(int));
+                }
+
+                ip = cinfo[icell].first;
+                volume = cinfo[icell].volume / cinfo[icell].weight;
+                if (volume == 0.0) sparta.error.one( "Collision cell volume is zero");
+
+                // setup particle list for this cell
+
+                if (np > npmax)
+                {
+                    npmax = np + DELTAPART;
+                    //memory->destroy(plist);
+                    //memory->create(plist, npmax, "collide:plist");
+                    plist = new int[npmax];
+                }
+
+                n = 0;
+                while (ip >= 0)
+                {
+                    plist[n++] = ip;
+                    ip = next[ip];
+                }
+
+                // attempt = exact collision attempt count for a pair of groups
+                // nattempt = rounded attempt with RN
+
+                attempt = attempt_collision(icell, np, volume);
+                nattempt = Convert.ToInt32(attempt);
+
+                if (nattempt==0) continue;
+                nattempt_one += nattempt;
+
+                // perform collisions
+                // select random pair of particles, cannot be same
+                // test if collision actually occurs
+
+                for (m = 0; m < nattempt; m++)
+                {
+                    i = (int)(np * random.uniform());
+                    if (NEARCP!=0) j = find_nn(i, np);
+                    else
+                    {
+                        j = (int)(np * random.uniform());
+                        while (i == j) j = (int)(np * random.uniform());
+                    }
+
+                    ipart = particles[plist[i]];
+                    jpart = particles[plist[j]];
+
+                    // test if collision actually occurs
+                    // continue to next collision if no reaction
+
+                    if (test_collision(icell, 0, 0, ipart, jpart)==0) continue;
+
+                    if (NEARCP!=0)
+                    {
+                        nn_last_partner[i] = j + 1;
+                        nn_last_partner[j] = i + 1;
+                    }
+
+                    // if recombination reaction is possible for this IJ pair
+                    // pick a 3rd particle to participate and set cell number density
+                    // unless boost factor turns it off, or there is no 3rd particle
+
+                    if (recombflag!=0 && recomb_ijflag[ipart.ispecies,jpart.ispecies]!=0)
+                    {
+                        if (random.uniform() > sparta.react.recomb_boost_inverse)
+                            sparta.react.recomb_species = -1;
+                        else if (np <= 2)
+                            sparta.react.recomb_species = -1;
+                        else
+                        {
+                            k = (int)(np * random.uniform());
+                            while (k == i || k == j) k = (int)(np * random.uniform());
+                            sparta.react.recomb_part3 = particles[plist[k]];
+                            sparta.react.recomb_species = sparta.react.recomb_part3.ispecies;
+                            sparta.react.recomb_density = np * sparta.update.fnum / volume;
+                        }
+                    }
+
+                    // perform collision and possible reaction
+
+                    setup_collision(ipart, jpart);
+                    reactflag = perform_collision(ipart, jpart, kpart);
+                    ncollide_one++;
+                    if (reactflag!=0) nreact_one++;
+                    else continue;
+
+                    // if jpart destroyed, delete from plist
+                    // also add particle to deletion list
+                    // exit attempt loop if only single particle left
+
+                    if (!jpart)
+                    {
+                        if (ndelete == maxdelete)
+                        {
+                            maxdelete += DELTADELETE;
+                            memory->grow(dellist, maxdelete, "collide:dellist");
+                        }
+                        dellist[ndelete++] = plist[j];
+                        np--;
+                        plist[j] = plist[np];
+                        if (NEARCP) nn_last_partner[j] = nn_last_partner[np];
+                        if (np < 2) break;
+                    }
+
+                    // if kpart created, add to plist
+                    // kpart was just added to particle list, so index = nlocal-1
+                    // particle data structs may have been realloced by kpart
+
+                    if (kpart)
+                    {
+                        if (np == npmax)
+                        {
+                            npmax = np + DELTAPART;
+                            memory->grow(plist, npmax, "collide:plist");
+                        }
+                        if (NEARCP) set_nn(np);
+                        plist[np++] = sparta.particle.nlocal - 1;
+                        particles = sparta.particle.particles;
+                    }
+                }
+            }
+        }
         //template<int> void collisions_group();
         //void collisions_one_ambipolar();
         //void collisions_group_ambipolar();
-        //void ambi_reset(int, int, int, int, Particle::OnePart*, Particle::OnePart*,
-        //                Particle::OnePart*, int[]);
+        //void ambi_reset(int, int, int, int, Particle.OnePart, Particle.OnePart,
+        //                Particle.OnePart, int[]);
         //void ambi_check();
         //void grow_percell(int);
 
-        //int find_nn(int, int);
+        int find_nn(int i, int np)
+        {
+            int jneigh;
+            double dx, dy, dz, rsq;
+            double[] xj;
+
+            // if np = 2, just return J = non-I particle
+            // np is never < 2
+
+            if (np == 2) return (i + 1) % 2;
+
+            Particle.OnePart ipart,jpart;
+            Particle.OnePart[] particles = sparta.particle.particles;
+            double dt = sparta.update.dt;
+
+            // thresh = distance particle I moves in this timestep
+
+            ipart = particles[plist[i]];
+            double[] vi = ipart.v;
+            double[] xi = ipart.x;
+            double threshsq = dt * dt * (vi[0] * vi[0] + vi[1] * vi[1] + vi[2] * vi[2]);
+            double minrsq = BIG;
+
+            // nlimit = max # of J candidates to consider
+
+            int nlimit = MIN(nearlimit, np - 1);
+            int count = 0;
+
+            // pick a random starting J
+            // jneigh = collision partner when exit loop
+            //   set to initial J as default in case no Nlimit J meets criteria
+
+            int j = np * random->uniform();
+            while (i == j) j = np * random->uniform();
+            jneigh = j;
+
+            while (count < nlimit)
+            {
+                count++;
+
+                // skip this J if I,J last collided with each other
+
+                if (nn_last_partner[i] == j + 1 && nn_last_partner[j] == i + 1)
+                {
+                    j++;
+                    if (j == np) j = 0;
+                    continue;
+                }
+
+                // rsq = squared distance between particles I and J
+                // if rsq = 0.0, skip this J
+                //   could be I = J, or a cloned J at same position as I
+                // if rsq <= threshsq, this J is collision partner
+                // if rsq = smallest yet seen, this J is tentative collision partner
+
+                jpart = &particles[plist[j]];
+                xj = jpart->x;
+                dx = xi[0] - xj[0];
+                dy = xi[1] - xj[1];
+                dz = xi[2] - xj[2];
+                rsq = dx * dx + dy * dy + dz * dz;
+
+                if (rsq > 0.0)
+                {
+                    if (rsq <= threshsq)
+                    {
+                        jneigh = j;
+                        break;
+                    }
+                    if (rsq < minrsq)
+                    {
+                        minrsq = rsq;
+                        jneigh = j;
+                    }
+                }
+
+                j++;
+                if (j == np) j = 0;
+            }
+
+            return jneigh;
+        }
         //int find_nn_group(int, int[], int, int[], int[], int[]);
         //void realloc_nn(int, int[]&);
         //void set_nn(int);
