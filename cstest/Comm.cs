@@ -8,6 +8,30 @@ namespace cstest
     public delegate void callbackHandler(int nsize,StringBuilder buf);
     public class Comm
     {
+        public static byte[] GetBytes(Particle.OnePart part)
+        {
+            int size = Marshal.SizeOf(part);
+            byte[] buf = new byte[size];
+
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+            Marshal.StructureToPtr(part, ptr, true);
+            Marshal.Copy(ptr, buf, 0, size);
+            Marshal.FreeHGlobal(ptr);
+            return buf;
+        }
+        public static Particle.OnePart Bytes2OnePart(byte[] buf)
+        {
+            Particle.OnePart part = new Particle.OnePart();
+
+            int size = Marshal.SizeOf(buf);
+            IntPtr ptr = Marshal.AllocHGlobal(size);
+
+            Marshal.Copy(buf,0, ptr, size);
+            part =(Particle.OnePart) Marshal.PtrToStructure(ptr, part.GetType());
+
+            return part;
+        }
+
         enum Enum1{ PKEEP, PINSERT, PDONE, PDISCARD, PENTRY, PEXIT, PSURF };   // several files
         public int me, nprocs;                    // proc info
         public bigint ncomm;                     // dummy statistic for now
@@ -54,57 +78,61 @@ namespace cstest
         }
         public int migrate_particles(int nmigrate, int[] plist)
         {
-            //int i, j;
+            int i, j;
 
-            //Grid.ChildCell[] cells = sparta.grid.cells;
-            //Particle.OnePart[] particles = sparta.particle.particles;
+            Grid.ChildCell[] cells = sparta.grid.cells;
+            Particle.OnePart[] particles = sparta.particle.particles;
 
-            //int ncustom = sparta.particle.ncustom;
-            //int nbytes_particle = Marshal.SizeOf(typeof(Particle.OnePart));
-            //int nbytes_custom = sparta.particle.sizeof_custom();
-            //int nbytes = nbytes_particle + nbytes_custom;
+            int ncustom = sparta.particle.ncustom;
+            int nbytes_particle = Marshal.SizeOf(typeof(Particle.OnePart));
+            int nbytes_custom = sparta.particle.sizeof_custom();
+            int nbytes = nbytes_particle + nbytes_custom;
+            StringBuilder sbuff=null;
+            // grow pproc and sbuf if necessary
 
-            //// grow pproc and sbuf if necessary
+            if (nmigrate > maxpproc)
+            {
+                maxpproc = nmigrate;
+                //memory->destroy(pproc);
+                //memory->create(pproc, maxpproc, "comm:pproc");
+                pproc = new int[maxpproc];
 
-            //if (nmigrate > maxpproc)
-            //{
-            //    maxpproc = nmigrate;
-            //    //memory->destroy(pproc);
-            //    //memory->create(pproc, maxpproc, "comm:pproc");
-            //    pproc = new int[maxpproc];
+            }
+            if (nmigrate * nbytes > maxsendbuf)
+            {
+                maxsendbuf = nmigrate * nbytes;
+                //memory->destroy(sbuf);
+                //memory->create(sbuf, maxsendbuf, "comm:sbuf");
+                sbuf = new byte[maxsendbuf];
+                sbuff = new StringBuilder();
+            }
 
-            //}
-            //if (nmigrate * nbytes > maxsendbuf)
-            //{
-            //    maxsendbuf = nmigrate * nbytes;
-            //    //memory->destroy(sbuf);
-            //    //memory->create(sbuf, maxsendbuf, "comm:sbuf");
-            //    sbuf = new char[maxsendbuf];
-            //}
+            // fill proclist with procs to send to
+            // pack sbuf with particles to migrate
+            // if flag == PDISCARD, particle is deleted but not sent
+            // change icell of migrated particle to owning cell on receiving proc
+            // nsend = particles that actually migrate
+            // if no custom attributes, pack particles directly via memcpy()
+            // else pack_custom() performs packing into sbuf
 
-            //// fill proclist with procs to send to
-            //// pack sbuf with particles to migrate
-            //// if flag == PDISCARD, particle is deleted but not sent
-            //// change icell of migrated particle to owning cell on receiving proc
-            //// nsend = particles that actually migrate
-            //// if no custom attributes, pack particles directly via memcpy()
-            //// else pack_custom() performs packing into sbuf
+            int nsend = 0;
+            int offset = 0;
 
-            //int nsend = 0;
-            //int offset = 0;
-
-            //if (ncustom==0)
-            //{
-            //    for (i = 0; i < nmigrate; i++)
-            //    {
-            //        j = plist[i];
-            //        if (particles[j].flag == (int)Enum1.PDISCARD) continue;
-            //        pproc[nsend++] = cells[particles[j].icell].proc;
-            //        particles[j].icell = cells[particles[j].icell].ilocal;
-            //        memcpy(&sbuf[offset], &particles[j], nbytes_particle);
-            //        offset += nbytes_particle;
-            //    }
-            //}
+            if (ncustom == 0)
+            {
+                for (i = 0; i < nmigrate; i++)
+                {
+                    j = plist[i];
+                    if (particles[j].flag == (int)Enum1.PDISCARD) continue;
+                    pproc[nsend++] = cells[particles[j].icell].proc;
+                    particles[j].icell = cells[particles[j].icell].ilocal;
+                    //memcpy(&sbuf[offset], &particles[j], nbytes_particle);
+                    sbuf = GetBytes(particles[j]);
+                    ///
+                    ///https://stackoverflow.com/questions/3278827/how-to-convert-a-structure-to-a-byte-array-in-c
+                    offset += nbytes_particle;
+                }
+            }
             //else
             //{
             //    for (i = 0; i < nmigrate; i++)
@@ -222,12 +250,12 @@ namespace cstest
             {
                 //memory->destroy(sbuf);
                 maxsendbuf = offset;
-                sbuf = new char[maxsendbuf];
+                sbuf = new byte[maxsendbuf];
                 //memory->create(sbuf, maxsendbuf, "comm:sbuf");
                 //memset(sbuf, 0, maxsendbuf);
             }
-            sbuf = new char[maxsendbuf];
-            rbuf = new char[maxsendbuf];
+            sbuf = new byte[maxsendbuf];
+            rbuf = new byte[maxsendbuf];
             // pack cell info into sbuf
             // only called for unsplit and split cells I no longer own
 
@@ -271,7 +299,7 @@ namespace cstest
             {
                // memory->destroy(rbuf);
                 maxrecvbuf = recvsize;
-                rbuf = new char[maxrecvbuf];
+                rbuf = new byte[maxrecvbuf];
                 //memory->create(rbuf, maxrecvbuf, "comm:rbuf");
                 //memset(rbuf, 0, maxrecvbuf);
             }
@@ -344,7 +372,7 @@ namespace cstest
 
 
         protected Irregular iparticle,igrid,iuniform;
-        protected char[] sbuf,rbuf;
+        protected byte[] sbuf,rbuf;
         protected int maxsendbuf, maxrecvbuf;
         protected int[] pproc,gproc,gsize;
         protected int maxpproc, maxgproc;

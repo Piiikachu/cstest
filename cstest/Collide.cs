@@ -270,7 +270,7 @@ namespace cstest
 
             if (ambiflag==0)
             {
-                //Console.WriteLine("Collide.collisions()->ambiflag==0");
+                //Console.WriteLine("Collide.collisions().ambiflag==0");
                 if (nearcp == 0)
                 {
                     if (ngroups == 1) collisions_one(0);
@@ -286,7 +286,7 @@ namespace cstest
             {
                 //if (ngroups == 1) collisions_one_ambipolar();
                 //else collisions_group_ambipolar();
-                Console.WriteLine("Collide.collisions()->ambiflag!=0");
+                Console.WriteLine("Collide.collisions().ambiflag!=0");
             }
 
             // remove any particles deleted in chemistry reactions
@@ -301,7 +301,7 @@ namespace cstest
             nattempt_running += nattempt_one;
             ncollide_running += ncollide_one;
             nreact_running += nreact_one;
-            Console.WriteLine("Collide virtual collisions");
+            //Console.WriteLine("Collide virtual collisions");
         }
 
         public virtual double vremax_init(int igroup, int jgroup)
@@ -318,11 +318,23 @@ namespace cstest
             Console.WriteLine("Collide virtual attempt_collision2");
             return 0;
         }
-        //public virtual int test_collision(int, int, int,
-        //                Particle.OnePart, Particle.OnePart) = 0;
-        //public virtual void setup_collision(Particle.OnePart, Particle.OnePart) = 0;
-        //public virtual int perform_collision(Particle.OnePart&, Particle.OnePart&,
-        //                               Particle.OnePart&) = 0;
+        public virtual int test_collision(int icell, int igroup, int jgroup,
+                        Particle.OnePart ip, Particle.OnePart jp)
+        {
+            Console.WriteLine("Collide virtual test_collision");
+
+            return 0;
+        }
+        public virtual void setup_collision(Particle.OnePart ip, Particle.OnePart jp)
+        {
+            Console.WriteLine("Collide virtual setup_collision");
+        }
+        public virtual int perform_collision(ref Particle.OnePart? ip, ref Particle.OnePart? jp,
+                                       ref Particle.OnePart? kp)
+        {
+            Console.WriteLine("Collide virtual perform_collision");
+            return 0;
+        }
 
         //public virtual double extract(int, const char*) {return 0.0;
 
@@ -509,7 +521,7 @@ namespace cstest
             int i, j, k, m, n, ip, np;
             int nattempt, reactflag;
             double attempt, volume;
-            Particle.OnePart ipart,jpart,*kpart;
+            Particle.OnePart? ipart=null,jpart=null,kpart=null;
 
             // loop over cells I own
 
@@ -543,8 +555,8 @@ namespace cstest
                 if (np > npmax)
                 {
                     npmax = np + DELTAPART;
-                    //memory->destroy(plist);
-                    //memory->create(plist, npmax, "collide:plist");
+                    //memory.destroy(plist);
+                    //memory.create(plist, npmax, "collide:plist");
                     plist = new int[npmax];
                 }
 
@@ -584,7 +596,7 @@ namespace cstest
                     // test if collision actually occurs
                     // continue to next collision if no reaction
 
-                    if (test_collision(icell, 0, 0, ipart, jpart)==0) continue;
+                    if (test_collision(icell, 0, 0, ipart.Value, jpart.Value)==0) continue;
 
                     if (NEARCP!=0)
                     {
@@ -596,26 +608,27 @@ namespace cstest
                     // pick a 3rd particle to participate and set cell number density
                     // unless boost factor turns it off, or there is no 3rd particle
 
-                    if (recombflag!=0 && recomb_ijflag[ipart.ispecies,jpart.ispecies]!=0)
+                    if (recombflag!=0 && recomb_ijflag[ipart.Value.ispecies,jpart.Value.ispecies]!=0)
                     {
-                        if (random.uniform() > sparta.react.recomb_boost_inverse)
-                            sparta.react.recomb_species = -1;
-                        else if (np <= 2)
-                            sparta.react.recomb_species = -1;
-                        else
-                        {
-                            k = (int)(np * random.uniform());
-                            while (k == i || k == j) k = (int)(np * random.uniform());
-                            sparta.react.recomb_part3 = particles[plist[k]];
-                            sparta.react.recomb_species = sparta.react.recomb_part3.ispecies;
-                            sparta.react.recomb_density = np * sparta.update.fnum / volume;
-                        }
+                        //if (random.uniform() > sparta.react.recomb_boost_inverse)
+                        //    sparta.react.recomb_species = -1;
+                        //else if (np <= 2)
+                        //    sparta.react.recomb_species = -1;
+                        //else
+                        //{
+                        //    k = (int)(np * random.uniform());
+                        //    while (k == i || k == j) k = (int)(np * random.uniform());
+                        //    sparta.react.recomb_part3 = particles[plist[k]];
+                        //    sparta.react.recomb_species = sparta.react.recomb_part3.ispecies;
+                        //    sparta.react.recomb_density = np * sparta.update.fnum / volume;
+                        //}
+                        Console.WriteLine("Collide collisions_one()-> react");
                     }
 
                     // perform collision and possible reaction
-
-                    setup_collision(ipart, jpart);
-                    reactflag = perform_collision(ipart, jpart, kpart);
+                    
+                    setup_collision(ipart.Value, jpart.Value);
+                    reactflag = perform_collision(ref ipart,ref jpart,ref kpart);
                     ncollide_one++;
                     if (reactflag!=0) nreact_one++;
                     else continue;
@@ -624,17 +637,18 @@ namespace cstest
                     // also add particle to deletion list
                     // exit attempt loop if only single particle left
 
-                    if (!jpart)
+                    if (jpart==null)
                     {
                         if (ndelete == maxdelete)
                         {
                             maxdelete += DELTADELETE;
-                            memory->grow(dellist, maxdelete, "collide:dellist");
+                            //memory.grow(dellist, maxdelete, "collide:dellist");
+                            dellist = new int[maxdelete];
                         }
                         dellist[ndelete++] = plist[j];
                         np--;
                         plist[j] = plist[np];
-                        if (NEARCP) nn_last_partner[j] = nn_last_partner[np];
+                        if (NEARCP!=0) nn_last_partner[j] = nn_last_partner[np];
                         if (np < 2) break;
                     }
 
@@ -642,21 +656,25 @@ namespace cstest
                     // kpart was just added to particle list, so index = nlocal-1
                     // particle data structs may have been realloced by kpart
 
-                    if (kpart)
+                    if (kpart!=null)
                     {
                         if (np == npmax)
                         {
                             npmax = np + DELTAPART;
-                            memory->grow(plist, npmax, "collide:plist");
+                            //memory.grow(plist, npmax, "collide:plist");
+                            plist = new int[npmax];
                         }
-                        if (NEARCP) set_nn(np);
+                        if (NEARCP!=0) set_nn(np);
                         plist[np++] = sparta.particle.nlocal - 1;
                         particles = sparta.particle.particles;
                     }
                 }
             }
         }
-        //template<int> void collisions_group();
+        void collisions_group(int NEARCP)
+        {
+            Console.WriteLine("Collide  collisions_group");
+        }
         //void collisions_one_ambipolar();
         //void collisions_group_ambipolar();
         //void ambi_reset(int, int, int, int, Particle.OnePart, Particle.OnePart,
@@ -689,15 +707,15 @@ namespace cstest
 
             // nlimit = max # of J candidates to consider
 
-            int nlimit = MIN(nearlimit, np - 1);
+            int nlimit = Math.Min(nearlimit, np - 1);
             int count = 0;
 
             // pick a random starting J
             // jneigh = collision partner when exit loop
             //   set to initial J as default in case no Nlimit J meets criteria
 
-            int j = np * random->uniform();
-            while (i == j) j = np * random->uniform();
+            int j = (int)(np * random.uniform());
+            while (i == j) j = (int)(np * random.uniform());
             jneigh = j;
 
             while (count < nlimit)
@@ -719,8 +737,8 @@ namespace cstest
                 // if rsq <= threshsq, this J is collision partner
                 // if rsq = smallest yet seen, this J is tentative collision partner
 
-                jpart = &particles[plist[j]];
-                xj = jpart->x;
+                jpart = particles[plist[j]];
+                xj = jpart.x;
                 dx = xi[0] - xj[0];
                 dy = xi[1] - xj[1];
                 dz = xi[2] - xj[2];
@@ -748,7 +766,16 @@ namespace cstest
         }
         //int find_nn_group(int, int[], int, int[], int[], int[]);
         //void realloc_nn(int, int[]&);
-        //void set_nn(int);
+        void set_nn(int n)
+        {
+            if (n == max_nn)
+            {
+                max_nn *= 2;
+                //memory->grow(nn_last_partner, max_nn, "collide:nn_last_partner");
+                nn_last_partner = new int[max_nn];
+            }
+            nn_last_partner[n] = 0;
+        }
         //void set_nn_group(int);
 
     }
