@@ -133,74 +133,78 @@ namespace cstest
                     offset += nbytes_particle;
                 }
             }
-            //else
-            //{
-            //    for (i = 0; i < nmigrate; i++)
-            //    {
-            //        j = plist[i];
-            //        if (particles[j].flag == (int)Enum1.PDISCARD) continue;
-            //        pproc[nsend++] = cells[particles[j].icell].proc;
-            //        particles[j].icell = cells[particles[j].icell].ilocal;
-            //        memcpy(&sbuf[offset], &particles[j], nbytes_particle);
-            //        offset += nbytes_particle;
-            //        sparta.particle.pack_custom(j, &sbuf[offset]);
-            //        offset += nbytes_custom;
-            //    }
-            //}
+            else
+            {
+                for (i = 0; i < nmigrate; i++)
+                {
+                    j = plist[i];
+                    if (particles[j].flag == (int)Enum1.PDISCARD) continue;
+                    pproc[nsend++] = cells[particles[j].icell].proc;
+                    particles[j].icell = cells[particles[j].icell].ilocal;
+                    //memcpy(&sbuf[offset], &particles[j], nbytes_particle);
+                    byte[] tmp = GetBytes(particles[j]);
+                    Array.Copy(tmp,0,sbuf,offset,tmp.Length);
+                    offset += nbytes_particle;
+                    string tmpstr = Encoding.UTF8.GetString(tmp);
+                    StringBuilder sb = new StringBuilder(tmpstr.ToString());
+                    sparta.particle.pack_custom(j, ref sb);
+                    offset += nbytes_custom;
+                }
+            }
 
-            //// compress my list of particles
+            // compress my list of particles
 
-            //sparta.particle.compress_migrate(nmigrate, plist);
-            //int ncompress = sparta.particle.nlocal;
+            sparta.particle.compress_migrate(nmigrate, plist);
+            int ncompress = sparta.particle.nlocal;
 
-            //// create or augment irregular communication plan
-            //// nrecv = # of incoming particles
+            // create or augment irregular communication plan
+            // nrecv = # of incoming particles
 
-            //int nrecv;
-            //if (neighflag!=0)
-            //    nrecv = sparta.particle.augment_data_uniform(nsend, pproc);
-            //else
-            //    nrecv = sparta.particle.create_data_uniform(nsend, pproc, commsortflag);
+            int nrecv;
+            if (neighflag != 0)
+                nrecv = sparta.particle.augment_data_uniform(nsend, pproc);
+            else
+                nrecv = sparta.particle.create_data_uniform(nsend, pproc, commsortflag);
 
-            //// extend particle list if necessary
+            // extend particle list if necessary
 
-            //sparta.particle.grow(nrecv);
+            sparta.particle.grow(nrecv);
 
-            //// perform irregular communication
-            //// if no custom attributes, append recv particles directly to particle list
-            //// else receive into rbuf, unpack particles one by one via unpack_custom()
+            // perform irregular communication
+            // if no custom attributes, append recv particles directly to particle list
+            // else receive into rbuf, unpack particles one by one via unpack_custom()
 
-            //if (ncustom==0)
-            //    sparta.particle.
-            //      exchange_uniform(sbuf, nbytes,
-            //                       (char*)&sparta.particle.particles[sparta.particle.nlocal]);
+            if (ncustom == 0)
+                sparta.particle.
+                  exchange_uniform(sbuf, nbytes,
+                                   (char*)&sparta.particle.particles[sparta.particle.nlocal]);
 
-            //else
-            //{
-            //    if (nrecv * nbytes > maxrecvbuf)
-            //    {
-            //        maxrecvbuf = nrecv * nbytes;
-            //        memory->destroy(rbuf);
-            //        memory->create(rbuf, maxrecvbuf, "comm:rbuf");
-            //    }
+            else
+            {
+                if (nrecv * nbytes > maxrecvbuf)
+                {
+                    maxrecvbuf = nrecv * nbytes;
+                    memory->destroy(rbuf);
+                    memory->create(rbuf, maxrecvbuf, "comm:rbuf");
+                }
 
-            //    sparta.particle.exchange_uniform(sbuf, nbytes, rbuf);
+                sparta.particle.exchange_uniform(sbuf, nbytes, rbuf);
 
-            //    offset = 0;
-            //    int nlocal = sparta.particle.nlocal;
-            //    for (i = 0; i < nrecv; i++)
-            //    {
-            //        memcpy(&sparta.particle.particles[nlocal], &rbuf[offset], nbytes_particle);
-            //        offset += nbytes_particle;
-            //        sparta.particle.unpack_custom(&rbuf[offset], nlocal);
-            //        offset += nbytes_custom;
-            //        nlocal++;
-            //    }
-            //}
+                offset = 0;
+                int nlocal = sparta.particle.nlocal;
+                for (i = 0; i < nrecv; i++)
+                {
+                    memcpy(&sparta.particle.particles[nlocal], &rbuf[offset], nbytes_particle);
+                    offset += nbytes_particle;
+                    sparta.particle.unpack_custom(&rbuf[offset], nlocal);
+                    offset += nbytes_custom;
+                    nlocal++;
+                }
+            }
 
-            //sparta.particle.nlocal += nrecv;
-            //ncomm += nsend;
-            //return ncompress;
+            sparta.particle.nlocal += nrecv;
+            ncomm += nsend;
+            return ncompress;
             Console.WriteLine("comm.migrate_particles");
             return 0;
         }
