@@ -89,7 +89,7 @@ namespace cstest
 
         }
         //public void init();
-        public override Particle.OnePart collide(ref Particle.OnePart? ip, double[] norm,double dtremain, int isr)
+        public override Particle.OnePart? collide(ref Particle.OnePart? ip, double[] norm,double dtremain, int isr)
         {
             nsingle++;
 
@@ -97,7 +97,7 @@ namespace cstest
             // reaction = 1 if reaction took place
 
             Particle.OnePart iorig;
-            Particle.OnePart? jp ;
+            Particle.OnePart? jp=null ;
             int reaction = 0;
 
             if (isr >= 0)
@@ -105,7 +105,7 @@ namespace cstest
                 if (sparta.modify.n_surf_react!=0)
                 {
                     //memcpy(&iorig, ip, sizeof(Particle.OnePart));
-                    iorig = (Particle.OnePart)ip;
+                    iorig = ip.Value;
                 }
 
                 reaction = sparta.surf.sr[isr].react(ref ip, norm, out jp);
@@ -114,19 +114,16 @@ namespace cstest
                     sparta.surf.nreact_one++;
                 }
             }
-            else
-            {
-                jp = null;
-            }
+           
 
             // diffuse reflection for each particle
             if (ip!=null)
             {
-                diffuse((Particle.OnePart)ip, norm);
+                diffuse(ip.Value, norm);
             }
             if (jp!=null)
             {
-                diffuse((Particle.OnePart)jp, norm);
+                diffuse(jp.Value, norm);
             }
 
             // call any fixes with a surf_react() method
@@ -148,7 +145,7 @@ namespace cstest
                 Console.WriteLine("SurfCollideDiffuse.collide-> react");
             }
 
-            return (Particle.OnePart)jp;
+            return jp;
         }
 
         //public void dynamic();

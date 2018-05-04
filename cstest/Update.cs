@@ -726,6 +726,7 @@ namespace cstest
             {
                 niterate++;
                 particles = sparta.particle.particles;
+                //Console.WriteLine(nlocal);
                 nmigrate = 0;
                 entryexit = 0;
 

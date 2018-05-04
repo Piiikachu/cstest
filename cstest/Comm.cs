@@ -162,9 +162,9 @@ namespace cstest
 
             int nrecv;
             if (neighflag != 0)
-                nrecv = sparta.particle.augment_data_uniform(nsend, pproc);
+                nrecv = iparticle.augment_data_uniform(nsend, pproc);
             else
-                nrecv = sparta.particle.create_data_uniform(nsend, pproc, commsortflag);
+                nrecv = iparticle.create_data_uniform(nsend, pproc, commsortflag);
 
             // extend particle list if necessary
 
@@ -175,28 +175,34 @@ namespace cstest
             // else receive into rbuf, unpack particles one by one via unpack_custom()
 
             if (ncustom == 0)
-                sparta.particle.
-                  exchange_uniform(sbuf, nbytes,
-                                   (char*)&sparta.particle.particles[sparta.particle.nlocal]);
-
+            {
+                //iparticle.exchange_uniform(sbuf, nbytes,
+                //                   (string)sparta.particle.particles[sparta.particle.nlocal]);
+                string rbuf = Encoding.UTF8.GetString(GetBytes(sparta.particle.particles[sparta.particle.nlocal]));
+                iparticle.exchange_uniform(Encoding.UTF8.GetString(sbuf), nbytes, rbuf);
+            }
             else
             {
                 if (nrecv * nbytes > maxrecvbuf)
                 {
                     maxrecvbuf = nrecv * nbytes;
-                    memory->destroy(rbuf);
-                    memory->create(rbuf, maxrecvbuf, "comm:rbuf");
+                    //memory->destroy(rbuf);
+                    //memory->create(rbuf, maxrecvbuf, "comm:rbuf");
+                    rbuf = new byte[maxrecvbuf];
                 }
 
-                sparta.particle.exchange_uniform(sbuf, nbytes, rbuf);
+                iparticle.exchange_uniform(Encoding.UTF8.GetString(sbuf), nbytes, Encoding.UTF8.GetString( rbuf));
 
                 offset = 0;
                 int nlocal = sparta.particle.nlocal;
                 for (i = 0; i < nrecv; i++)
                 {
-                    memcpy(&sparta.particle.particles[nlocal], &rbuf[offset], nbytes_particle);
+                    //memcpy(&sparta.particle.particles[nlocal], &rbuf[offset], nbytes_particle);
+                    sparta.particle.particles[nlocal] = Bytes2OnePart(rbuf);
                     offset += nbytes_particle;
-                    sparta.particle.unpack_custom(&rbuf[offset], nlocal);
+                    byte[] tmp = new byte[rbuf.Length - offset];
+                    Array.Copy(rbuf, offset, tmp, 0, tmp.Length);
+                    sparta.particle.unpack_custom(tmp, nlocal);
                     offset += nbytes_custom;
                     nlocal++;
                 }
@@ -205,8 +211,8 @@ namespace cstest
             sparta.particle.nlocal += nrecv;
             ncomm += nsend;
             return ncompress;
-            Console.WriteLine("comm.migrate_particles");
-            return 0;
+            //Console.WriteLine("comm.migrate_particles");
+            //return 0;
         }
         public virtual void migrate_cells(int nmigrate)
         {

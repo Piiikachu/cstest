@@ -58,8 +58,53 @@ namespace cstest
         }
 
 
-        //public virtual double attempt_collision(int, int, double);
-        //public double attempt_collision(int, int, int, double);
+        public override double attempt_collision(int icell, int np, double volume)
+        {
+            double fnum = sparta.update.fnum;
+            double dt = sparta.update.dt;
+
+            double nattempt;
+
+            if (remainflag!=0)
+            {
+                nattempt = 0.5 * np * (np - 1) *
+                  vremax[icell][0,0] * dt * fnum / volume + remain[icell][0,0];
+                remain[icell][0,0] = nattempt - Convert.ToInt32(nattempt);
+            }
+            else
+                nattempt = 0.5 * np * (np - 1) *
+                  vremax[icell][0,0] * dt * fnum / volume + random.uniform();
+
+            // DEBUG
+            //nattempt = 10;
+
+            return nattempt;
+        }
+        public override double attempt_collision(int icell, int igroup, int jgroup, double volume)
+        {
+            double fnum = sparta.update.fnum;
+            double dt = sparta.update.dt;
+
+            double nattempt;
+
+            // return 2x the value for igroup != jgroup, since no J,I pairing
+
+            double npairs;
+            if (igroup == jgroup) npairs = 0.5 * ngroup[igroup] * (ngroup[igroup] - 1);
+            else npairs = ngroup[igroup] * (ngroup[jgroup]);
+            //else npairs = 0.5 * ngroup[igroup] * (ngroup[jgroup]);
+
+            nattempt = npairs * vremax[icell][igroup,jgroup] * dt * fnum / volume;
+
+            if (remainflag!=0)
+            {
+                nattempt += remain[icell][igroup,jgroup];
+                remain[icell][igroup,jgroup] = nattempt - Convert.ToInt32(nattempt);
+            }
+            else nattempt += random.uniform();
+
+            return nattempt;
+        }
         //public virtual int test_collision(int, int, int, Particle::OnePart*, Particle::OnePart*);
         //public virtual void setup_collision(Particle::OnePart*, Particle::OnePart*);
         //public virtual int perform_collision(Particle::OnePart*&, Particle::OnePart*&,

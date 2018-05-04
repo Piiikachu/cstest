@@ -44,23 +44,25 @@ namespace cstest
         public int nmixture;
         public int maxmixture;
 
-        [StructLayout(LayoutKind.Explicit)]
+        [StructLayout(LayoutKind.Sequential,Pack =1)]
         public struct OnePart
         {
-            [FieldOffset(0)]public int id;                 // particle ID
-            [FieldOffset(4)]public int ispecies;           // particle species index
-            [FieldOffset(8)]public int icell;              // which local Grid::cells the particle is in
-            [FieldOffset(32)]public double[] x;            // particle position
-            [FieldOffset(56)]public double[] v;            // particle velocity
-            [FieldOffset(64)]public double erot;            // rotational energy
-            [FieldOffset(72)]public double evib;            // vibrational energy
-            [FieldOffset(76)]public int flag;               // used for migration status
-            [FieldOffset(80)]public double dtremain;        // portion of move timestep remaining
-            [FieldOffset(88)] public double weight;          // particle or cell weight, if weighting enabled
+            public int id;                 // particle ID
+            public int ispecies;           // particle species index
+            public int icell;              // which local Grid::cells the particle is in
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3, ArraySubType = UnmanagedType.SysInt)]
+            public double[] x;            // particle position
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3, ArraySubType = UnmanagedType.SysInt)]
+            public double[] v;            // particle velocity
+            public double erot;            // rotational energy
+            public double evib;            // vibrational energy
+            public int flag;               // used for migration status
+            public double dtremain;        // portion of move timestep remaining
+            public double weight;          // particle or cell weight, if weighting enabled
 
             
         }
-
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct OnePartRestart
         {
             public int id;                 // particle ID
@@ -68,7 +70,9 @@ namespace cstest
             public cellint icell;          // cell ID the particle is in
             public int nsplit;             // 1 for unsplit cell
                                            // else neg of sub cell index (0 to Nsplit-1)
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3, ArraySubType = UnmanagedType.SysInt)]
             public double[] x;            // particle position
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3, ArraySubType = UnmanagedType.SysInt)]
             public double[] v;            // particle velocity
             public double erot;            // rotational energy
             public double evib;            // vibrational energy
@@ -149,7 +153,52 @@ namespace cstest
             //memory.create(cellcount,maxgrid,"particle:cellcount");
             // }
         }
-        //public virtual void compress_migrate(int, int*);
+        public virtual void compress_migrate(int nmigrate, int[] mlist)
+        {
+            int i, j, k;
+            int nbytes = Marshal.SizeOf(typeof(OnePart));
+
+            if (ncustom==0)
+            {
+                for (i = 0; i < nmigrate; i++)
+                {
+                    j = mlist[i];
+                    k = nlocal - 1;
+                    while (k == mlist[nmigrate - 1] && k > j)
+                    {
+                        nmigrate--;
+                        nlocal--;
+                        k--;
+                    }
+                    nlocal--;
+                    if (j == k) continue;
+                    //memcpy(&particles[j], &particles[k], nbytes);
+                    Array.Copy(particles, k, particles, j, 1);
+                }
+
+            }
+            else
+            {
+                for (i = 0; i < nmigrate; i++)
+                {
+                    j = mlist[i];
+                    k = nlocal - 1;
+                    while (k == mlist[nmigrate - 1] && k > j)
+                    {
+                        nmigrate--;
+                        nlocal--;
+                        k--;
+                    }
+                    nlocal--;
+                    if (j == k) continue;
+                    //memcpy(&particles[j], &particles[k], nbytes);
+                    Array.Copy(particles, k, particles, j, 1);
+                    copy_custom(j, k);
+                }
+            }
+
+            sorted = 0;
+        }
         public void compress_rebalance()
         {
             int nbytes = 96;
@@ -326,7 +375,14 @@ namespace cstest
             //  memory.srealloc(particles, maxlocal * sizeof(OnePart),
             //           "particle:particles");
             //memset(&particles[oldmax], 0, (maxlocal - oldmax) * sizeof(OnePart));
-            particles = new OnePart[maxlocal];
+            if (particles==null)
+            {
+                particles = new OnePart[maxlocal];
+            }
+            else
+            {
+                Array.Resize<OnePart>(ref particles, maxlocal);
+            }
             if (ncustom == 0) return;
 
             for (int i = 0; i < ncustom; i++)
@@ -431,9 +487,11 @@ namespace cstest
             p.id = id;
             p.ispecies = ispecies;
             p.icell = icell;
+            p.x = new double[3];
             p.x[0] = x[0];
             p.x[1] = x[1];
             p.x[2] = x[2];
+            p.v = new double[3];
             p.v[0] = v[0];
             p.v[1] = v[1];
             p.v[2] = v[2];
@@ -443,7 +501,7 @@ namespace cstest
 
             //p->dtremain = 0.0;    not needed due to memset in grow() ??
             //p->weight = 1.0;      not needed due to memset in grow() ??
-
+            particles[nlocal] = p;
             nlocal++;
             return reallocflag;
         }
@@ -956,7 +1014,48 @@ namespace cstest
             }
 
         }
-        //public void unpack_custom(char*, int);
+        public void unpack_custom(byte[] buf, int n)
+        {
+            Console.WriteLine("Particle.unpack_custom()");
+            //int i;
+            //char* ptr = buf;
+
+            //if (ncustom_ivec!=0)
+            //{
+            //    for (i = 0; i < ncustom_ivec; i++)
+            //    {
+            //        memcpy(&eivec[i][n], ptr, sizeof(int));
+            //        ptr += sizeof(int);
+            //    }
+            //}
+            //if (ncustom_iarray)
+            //{
+            //    for (i = 0; i < ncustom_iarray; i++)
+            //    {
+            //        memcpy(eiarray[i][n], ptr, eicol[i] * sizeof(int));
+            //        ptr += eicol[i] * sizeof(int);
+            //    }
+            //}
+
+            //ptr = ROUNDUP(ptr);
+
+            //if (ncustom_dvec)
+            //{
+            //    for (i = 0; i < ncustom_dvec; i++)
+            //    {
+            //        memcpy(&edvec[i][n], ptr, sizeof(double));
+            //        ptr += sizeof(double);
+            //    }
+            //}
+            //if (ncustom_darray)
+            //{
+            //    for (i = 0; i < ncustom_darray; i++)
+            //    {
+            //        memcpy(edarray[i][n], ptr, edcol[i] * sizeof(double));
+            //        ptr += edcol[i] * sizeof(double);
+            //    }
+            //}
+        }
 
         public bigint memory_usage()
         {

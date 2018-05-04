@@ -40,10 +40,10 @@ namespace cstest
         {
             nsingle = ntotal = 0;
         }
-        public virtual Particle.OnePart collide(ref Particle.OnePart? ip, double[] norm,double dtremain, int isr)
+        public virtual Particle.OnePart? collide(ref Particle.OnePart? ip, double[] norm,double dtremain, int isr)
         {
             Console.WriteLine("SurfCollide virtual collide");
-            return default(Particle.OnePart);
+            return null;
         }
 
         //virtual void dynamic() { }

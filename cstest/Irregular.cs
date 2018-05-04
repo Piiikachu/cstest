@@ -344,7 +344,104 @@ namespace cstest
             return nrecvdatum;
 
         }
-        //public int augment_data_uniform(int, int*);
+        public int augment_data_uniform(int n, int[] proclist)
+        {
+            int i, m=0, iproc, isend;
+
+            // tally count of messages to each proc in num_send and num_self
+
+            num_self = 0;
+            for (i = 0; i < nsend; i++) work2[proc_send[i]] = 0;
+            work2[me] = 0;
+            for (i = 0; i < n; i++) work2[proclist[i]]++;
+            for (i = 0; i < nsend; i++) num_send[i] = work2[proc_send[i]];
+            num_self = work2[me];
+
+            // reallocate send and self index lists if necessary
+            // could use n-num_self for length of index_send to be more precise
+
+            if (n > indexmax)
+            {
+                indexmax = n;
+                //memory->destroy(index_send);
+                //memory->create(index_send, indexmax, "irregular:index_send");
+                index_send = new int[indexmax];
+            }
+
+            if (num_self > indexselfmax)
+            {
+                indexselfmax = num_self;
+                //memory->destroy(index_self);
+                //memory->create(index_self, indexselfmax, "irregular:index_self");
+                index_self = new int[indexselfmax];
+            }
+
+            // work2 = offsets into index_send for each proc I send to
+            // m = ptr into index_self
+            // index_send = list of which datums to send to each proc
+            //   1st N1 values are datum indices for 1st proc,
+            //   next N2 values are datum indices for 2nd proc, etc
+            // index_self = list of which datums to copy to self
+
+            work2[0] = 0;
+            for (i = 1; i < nsend; i++) work2[i] = work2[i - 1] + num_send[i - 1];
+
+            if (num_self!=0)
+            {
+                m = 0;
+                for (i = 0; i < n; i++)
+                {
+                    iproc = proclist[i];
+                    if (iproc == me) index_self[m++] = i;
+                    else
+                    {
+                        isend = work1[iproc];
+                        index_send[work2[isend]++] = i;
+                    }
+                }
+            }
+            else
+            {
+                for (i = 0; i < n; i++)
+                {
+                    isend = work1[proclist[i]];
+                    index_send[work2[isend]++] = i;
+                }
+            }
+
+            // tell receivers how many datums I send them
+            // sendmax = largest # of datums I send in a single message
+
+            sendmax = 0;
+            for (i = 0; i < nsend; i++)
+            {
+                sparta.mpi.MPI_Send(ref num_send[i], 1, MPI.MPI_INT, proc_send[i], 0, sparta.world);
+                sendmax = Math.Max(sendmax, num_send[i]);
+            }
+
+            // receive incoming messages
+            // num_recv = # of datums each proc sends me
+            // nrecvdatum = total # of datums I recv
+
+            nrecvdatum = 0;
+            for (i = 0; i < nrecv; i++)
+            {
+                sparta.mpi.MPI_Recv(ref m, 1, MPI.MPI_INT, MPI.MPI_ANY_SOURCE, 0, sparta.world,ref status[0]);
+                iproc = status[0].MPI_SOURCE;
+                num_recv[proc2recv[iproc]] = m;
+                nrecvdatum += m;
+            }
+            nrecvdatum += num_self;
+
+            // barrier to insure all MPI_ANY_SOURCE messages are received
+            // else another proc could proceed to exchange_data() and send to me
+
+            sparta.mpi.MPI_Barrier(sparta.world);
+
+            // return # of datums I will receive
+
+            return nrecvdatum;
+        }
         public void exchange_uniform(string sendbuf, int nbytes,string recvbuf)
         {
             int i, m, n, offset, count;

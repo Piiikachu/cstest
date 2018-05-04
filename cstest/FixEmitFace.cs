@@ -20,7 +20,7 @@ namespace cstest
         public const double TEMPLIMIT = 1.0e5;
 
 
-        public new  void init()
+        public override  void init()
         {
             // copies of class data before invoking parent init() and count_task()
 
@@ -465,6 +465,7 @@ namespace cstest
                 task.temp_thermal = sparta.particle.mixture[imix].temp_thermal;
                 task.temp_rot = sparta.particle.mixture[imix].temp_rot;
                 task.temp_vib = sparta.particle.mixture[imix].temp_vib;
+                task.vstream = new double[3];
                 task.vstream[0] = sparta.particle.mixture[imix].vstream[0];
                 task.vstream[1] = sparta.particle.mixture[imix].vstream[1];
                 task.vstream[2] = sparta.particle.mixture[imix].vstream[2];
