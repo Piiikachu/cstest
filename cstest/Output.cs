@@ -243,7 +243,126 @@ namespace cstest
             next = Math.Min(next_dump_any, next_restart);
             next = Math.Min(next, next_stats);
         }
-        //public void write(bigint);                // output for current timestep
+        public void write(bigint ntimestep)                // output for current timestep
+        {
+            // next_dump does not force output on last step of run
+            // wrap dumps that invoke computes or eval of variable with clear/add
+            // download data from GPU if necessary
+
+            if (next_dump_any == ntimestep)
+            {
+                for (int idump = 0; idump < ndump; idump++)
+                {
+                    if (next_dump[idump] == ntimestep)
+                    {
+                        if (dump[idump].clearstep !=0|| every_dump[idump] == 0)
+                            sparta.modify.clearstep_compute();
+                        if (last_dump[idump] != ntimestep)
+                        {
+                            dump[idump].write();
+                            last_dump[idump] = ntimestep;
+                        }
+                        if (every_dump[idump]!=0) next_dump[idump] += every_dump[idump];
+                        else
+                        {
+                            bigint nextdump = Convert.ToInt64
+                              (sparta.input.variable.compute_equal(ivar_dump[idump]));
+                            if (nextdump <= ntimestep)
+                                sparta.error.all("Dump every variable returned a bad timestep");
+                            next_dump[idump] = nextdump;
+                        }
+                        if (dump[idump].clearstep != 0 || every_dump[idump] == 0)
+                            sparta.modify.addstep_compute(next_dump[idump]);
+                    }
+                    if (idump!=0) next_dump_any = Math.Min(next_dump_any, next_dump[idump]);
+                    else next_dump_any = next_dump[0];
+                }
+            }
+
+            // next_restart does not force output on last step of run
+            // for toggle = 0, replace "*" with current timestep in restart filename
+            // eval of variable may invoke computes so wrap with clear/add
+
+            if (next_restart == ntimestep)
+            {
+                if (next_restart_single == ntimestep)
+                {
+                    char* file = new char[strlen(restart1) + 16];
+                    char* ptr = strchr(restart1, '*');
+                    *ptr = '\0';
+                    sprintf(file, "%s" BIGINT_FORMAT "%s", restart1, ntimestep, ptr + 1);
+                    *ptr = '*';
+                    if (last_restart != ntimestep) restart.write(file);
+                    delete[] file;
+                    if (restart_every_single!=0) next_restart_single += restart_every_single;
+                    else
+                    {
+                        sparta.modify.clearstep_compute();
+                        bigint nextrestart = Convert.ToInt64
+                          (sparta.input.variable.compute_equal(ivar_restart_single));
+                        if (nextrestart <= ntimestep)
+                            sparta.error.all("Restart variable returned a bad timestep");
+                        next_restart_single = nextrestart;
+                        sparta.modify.addstep_compute(next_restart_single);
+                    }
+                }
+                if (next_restart_double == ntimestep)
+                {
+                    if (last_restart != ntimestep)
+                    {
+                        if (restart_toggle == 0)
+                        {
+                            restart.write(restart2a);
+                            restart_toggle = 1;
+                        }
+                        else
+                        {
+                            restart.write(restart2b);
+                            restart_toggle = 0;
+                        }
+                    }
+                    if (restart_every_double!=0) next_restart_double += restart_every_double;
+                    else
+                    {
+                        sparta.modify.clearstep_compute();
+                        bigint nextrestart = Convert.ToInt64
+                          (sparta.input.variable.compute_equal(ivar_restart_double));
+                        if (nextrestart <= ntimestep)
+                            sparta.error.all("Restart variable returned a bad timestep");
+                        next_restart_double = nextrestart;
+                        sparta.modify.addstep_compute(next_restart_double);
+                    }
+                }
+                last_restart = ntimestep;
+                next_restart = Math.Min(next_restart_single, next_restart_double);
+            }
+
+            // insure next_thermo forces output on last step of run
+            // thermo may invoke computes so wrap with clear/add
+
+            if (next_stats == ntimestep)
+            {
+                sparta.modify.clearstep_compute();
+                if (last_stats != ntimestep) stats.compute(1);
+                last_stats = ntimestep;
+                if (var_stats != null)
+                {
+                    next_stats = Convert.ToInt64
+                      (sparta.input.variable.compute_equal(ivar_stats));
+                    if (next_stats <= ntimestep)
+                        sparta.error.all("Stats every variable returned a bad timestep");
+                }
+                else if (stats_every!=0) next_stats += stats_every;
+                else next_stats = sparta.update.laststep;
+                next_stats = Math.Min(next_stats, sparta.update.laststep);
+                sparta.modify.addstep_compute(next_stats);
+            }
+
+            // next = next timestep any output will be done
+
+            next = Math.Min(next_dump_any, next_restart);
+            next = Math.Min(next, next_stats);
+        }
         //public void write_dump(bigint);           // force output of dump snapshots
         //public void write_restart(bigint);        // force output of a restart file
         //public void reset_timestep(bigint);       // reset next timestep for all output

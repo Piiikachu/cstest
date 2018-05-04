@@ -279,7 +279,7 @@ namespace cstest
 
                 if (ntimestep == sparta.output.next)
                 {
-                    Console.WriteLine("sparta.output.write(ntimestep);");
+                    sparta.output.write(ntimestep);
                     
                     sparta.timer.stamp((int)Timer.Enum1.TIME_OUTPUT);
                 }
