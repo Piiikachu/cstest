@@ -57,7 +57,7 @@ namespace cstest
             if (neighlist == null)
             {
                 neighlist = new int[nprocs];
-                //memory->create(neighlist, nprocs, "comm:neighlist");
+                //memory.create(neighlist, nprocs, "comm:neighlist");
             }
 
             for (int i = 0; i < nprocs; i++) neighlist[i] = 0;
@@ -93,16 +93,16 @@ namespace cstest
             if (nmigrate > maxpproc)
             {
                 maxpproc = nmigrate;
-                //memory->destroy(pproc);
-                //memory->create(pproc, maxpproc, "comm:pproc");
+                //memory.destroy(pproc);
+                //memory.create(pproc, maxpproc, "comm:pproc");
                 pproc = new int[maxpproc];
 
             }
             if (nmigrate * nbytes > maxsendbuf)
             {
                 maxsendbuf = nmigrate * nbytes;
-                //memory->destroy(sbuf);
-                //memory->create(sbuf, maxsendbuf, "comm:sbuf");
+                //memory.destroy(sbuf);
+                //memory.create(sbuf, maxsendbuf, "comm:sbuf");
                 sbuf = new byte[maxsendbuf];
                 sbuff = new StringBuilder();
             }
@@ -186,8 +186,8 @@ namespace cstest
                 if (nrecv * nbytes > maxrecvbuf)
                 {
                     maxrecvbuf = nrecv * nbytes;
-                    //memory->destroy(rbuf);
-                    //memory->create(rbuf, maxrecvbuf, "comm:rbuf");
+                    //memory.destroy(rbuf);
+                    //memory.create(rbuf, maxrecvbuf, "comm:rbuf");
                     rbuf = new byte[maxrecvbuf];
                 }
 
@@ -226,12 +226,12 @@ namespace cstest
             if (nmigrate > maxgproc)
             {
                 maxgproc = nmigrate;
-                //memory->destroy(gproc);
-                //memory->destroy(gsize);
+                //memory.destroy(gproc);
+                //memory.destroy(gsize);
                 gproc = new int[maxgproc];
                 gsize = new int[maxgproc];
-                //memory->create(gproc, maxgproc, "comm:gproc");
-                //memory->create(gsize, maxgproc, "comm:gsize");
+                //memory.create(gproc, maxgproc, "comm:gproc");
+                //memory.create(gsize, maxgproc, "comm:gsize");
             }
 
             // fill proclist with procs to send to
@@ -258,10 +258,10 @@ namespace cstest
 
             if (offset > maxsendbuf)
             {
-                //memory->destroy(sbuf);
+                //memory.destroy(sbuf);
                 maxsendbuf = offset;
                 sbuf = new byte[maxsendbuf];
-                //memory->create(sbuf, maxsendbuf, "comm:sbuf");
+                //memory.create(sbuf, maxsendbuf, "comm:sbuf");
                 //memset(sbuf, 0, maxsendbuf);
             }
             sbuf = new byte[maxsendbuf];
@@ -307,10 +307,10 @@ namespace cstest
 
             if (recvsize > maxrecvbuf)
             {
-               // memory->destroy(rbuf);
+               // memory.destroy(rbuf);
                 maxrecvbuf = recvsize;
                 rbuf = new byte[maxrecvbuf];
-                //memory->create(rbuf, maxrecvbuf, "comm:rbuf");
+                //memory.create(rbuf, maxrecvbuf, "comm:rbuf");
                 //memset(rbuf, 0, maxrecvbuf);
             }
 
@@ -328,7 +328,7 @@ namespace cstest
             {
                 offset += sparta.grid.unpack_one(new StringBuilder(), 1, 1);
             }
-            Console.Write("comm.migrate_cells()->unpackone\n");
+            Console.Write("comm.migrate_cells().unpackone\n");
             for (int a = offset; a < rbuf.Length-1-offset; a++)
             {
                 Console.Write("{0}",rbuf[a]);
@@ -376,8 +376,8 @@ namespace cstest
                 outbuf.Append(buf);
             }
 
-            //memory->destroy(buf);
-            //memory->destroy(bufcopy);
+            //memory.destroy(buf);
+            //memory.destroy(bufcopy);
         }
 
 

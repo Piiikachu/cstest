@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using bigint = System.Int64;
 namespace cstest
 {
@@ -157,7 +158,7 @@ namespace cstest
                     //    addfield("dt", compute_elapsed, (int)Enum1.BIGINT);
                     //    break;
                     case "cpu":
-                        addfield("cpu", compute_cpu, (int)Enum1.BIGINT);
+                        addfield("CPU", compute_cpu, (int)Enum1.FLOAT);
                         break;
                     //case "tpcpu":
                     //    addfield("tpcpu", compute_elapsed, (int)Enum1.BIGINT);
@@ -169,7 +170,7 @@ namespace cstest
                     //    addfield("wall", compute_elapsed, (int)Enum1.BIGINT);
                     //    break;
                     case "np":
-                        addfield("np", compute_np, (int)Enum1.BIGINT);
+                        addfield("Np", compute_np, (int)Enum1.BIGINT);
                         break;
                     //case "ntouch":
                     //    addfield("ntouch", compute_elapsed, (int)Enum1.BIGINT);
@@ -181,16 +182,16 @@ namespace cstest
                     //    addfield("nbound", compute_elapsed, (int)Enum1.BIGINT);
                     //    break;
                     case "nscoll":
-                        addfield("nscoll", compute_nscoll, (int)Enum1.BIGINT);
+                        addfield("Nscoll", compute_nscoll, (int)Enum1.BIGINT);
                         break;
                     case "nscheck":
-                        addfield("nscheck", compute_nscheck, (int)Enum1.BIGINT);
+                        addfield("Nscheck", compute_nscheck, (int)Enum1.BIGINT);
                         break;
                     case "ncoll":
-                        addfield("ncoll", compute_ncoll, (int)Enum1.BIGINT);
+                        addfield("Ncoll", compute_ncoll, (int)Enum1.BIGINT);
                         break;
                     case "nattempt":
-                        addfield("nattempt", compute_nattempt, (int)Enum1.BIGINT);
+                        addfield("Nattempt", compute_nattempt, (int)Enum1.BIGINT);
                         break;
                     //case "nreact":
                     //    addfield("nreact", compute_elapsed, (int)Enum1.BIGINT);
@@ -281,13 +282,17 @@ namespace cstest
         }
         public void header()
         {
+            if (line==null)
+            {
+                line = new StringBuilder();
+            }
             for (int i = 0; i < nfield; i++)
             {
-                line += keyword[i]+" ";
+                line .Append( string.Format(" {0,10} ",keyword[i]));
                 
             }
 
-            line += "\n";
+            
 
             if (me == 0)
             {
@@ -301,7 +306,7 @@ namespace cstest
             int i;
 
             firststep = flag;
-
+            line.Clear();
             // invoke Compute methods needed for stats keywords
 
             for (i = 0; i < ncompute; i++)
@@ -335,21 +340,21 @@ namespace cstest
             for (ifield = 0; ifield < nfield; ifield++)
             {
                 vfunc[ifield]();
-                format[ifield] = " {0} ";
+                format[ifield] = " {0,10:G6} ";
                 if (vtype[ifield] == (int)Enum1.FLOAT)
                 {
                     string str = string.Format(format[ifield], dvalue);
-                    line += str;
+                    line.Append(str);
                 }
                 else if (vtype[ifield] == (int)Enum1.INT)
                 {
                     string str = string.Format(format[ifield], ivalue);
-                    line += str;
+                    line.Append(str);
                 }
                 else if (vtype[ifield] == (int)Enum1.BIGINT)
                 {
                     string str = string.Format(format[ifield], bivalue);
-                    line += str;
+                    line.Append(str);
                 }
             }
 
@@ -368,7 +373,7 @@ namespace cstest
         }
         //public int evaluate_keyword(string, double*);
 
-        private string line;
+        private StringBuilder line;
         private string[] keyword;
         private int[] vtype;
 

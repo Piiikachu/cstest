@@ -622,7 +622,7 @@ namespace cstest
                         //    sparta.react.recomb_species = sparta.react.recomb_part3.ispecies;
                         //    sparta.react.recomb_density = np * sparta.update.fnum / volume;
                         //}
-                        Console.WriteLine("Collide collisions_one()-> react");
+                        Console.WriteLine("Collide collisions_one(). react");
                     }
 
                     // perform collision and possible reaction
@@ -771,7 +771,7 @@ namespace cstest
             if (n == max_nn)
             {
                 max_nn *= 2;
-                //memory->grow(nn_last_partner, max_nn, "collide:nn_last_partner");
+                //memory.grow(nn_last_partner, max_nn, "collide:nn_last_partner");
                 nn_last_partner = new int[max_nn];
             }
             nn_last_partner[n] = 0;

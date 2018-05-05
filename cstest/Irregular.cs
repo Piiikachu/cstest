@@ -363,16 +363,16 @@ namespace cstest
             if (n > indexmax)
             {
                 indexmax = n;
-                //memory->destroy(index_send);
-                //memory->create(index_send, indexmax, "irregular:index_send");
+                //memory.destroy(index_send);
+                //memory.create(index_send, indexmax, "irregular:index_send");
                 index_send = new int[indexmax];
             }
 
             if (num_self > indexselfmax)
             {
                 indexselfmax = num_self;
-                //memory->destroy(index_self);
-                //memory->create(index_self, indexselfmax, "irregular:index_self");
+                //memory.destroy(index_self);
+                //memory.create(index_self, indexselfmax, "irregular:index_self");
                 index_self = new int[indexselfmax];
             }
 
@@ -495,7 +495,7 @@ namespace cstest
 
             // wait on all incoming messages
 
-            if (nrecv != 0) Console.WriteLine("irregular.exchange_uniform()->MPI_waitall");//sparta.mpi.MPI_Waitall(nrecv, request, status);
+            if (nrecv != 0) Console.WriteLine("irregular.exchange_uniform().MPI_waitall");//sparta.mpi.MPI_Waitall(nrecv, request, status);
         }
         public void exchange_variable(byte[] sendbuf, int[] nbytes, byte[] recvbuf)
         {
@@ -514,10 +514,10 @@ namespace cstest
 
             if (sendmaxbytes > bufmax)
             {
-                //memory->destroy(buf);
+                //memory.destroy(buf);
                 bufmax = sendmaxbytes;
                 buf = new byte[bufmax];
-                //memory->create(buf, bufmax, "irregular:buf");
+                //memory.create(buf, bufmax, "irregular:buf");
             }
             // send each message
             // pack buf with list of datums
@@ -552,7 +552,7 @@ namespace cstest
 
             // wait on all incoming messages
 
-            if (nrecv != 0) Console.WriteLine("irregular.exchange_variable()->MPI_Waitall");//sparta.mpi.MPI_Waitall(nrecv, request, status);
+            if (nrecv != 0) Console.WriteLine("irregular.exchange_variable().MPI_Waitall");//sparta.mpi.MPI_Waitall(nrecv, request, status);
         }
         //public void reverse(int, int*);
 

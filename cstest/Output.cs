@@ -287,24 +287,25 @@ namespace cstest
             {
                 if (next_restart_single == ntimestep)
                 {
-                    char* file = new char[strlen(restart1) + 16];
-                    char* ptr = strchr(restart1, '*');
-                    *ptr = '\0';
-                    sprintf(file, "%s" BIGINT_FORMAT "%s", restart1, ntimestep, ptr + 1);
-                    *ptr = '*';
-                    if (last_restart != ntimestep) restart.write(file);
-                    delete[] file;
-                    if (restart_every_single!=0) next_restart_single += restart_every_single;
-                    else
-                    {
-                        sparta.modify.clearstep_compute();
-                        bigint nextrestart = Convert.ToInt64
-                          (sparta.input.variable.compute_equal(ivar_restart_single));
-                        if (nextrestart <= ntimestep)
-                            sparta.error.all("Restart variable returned a bad timestep");
-                        next_restart_single = nextrestart;
-                        sparta.modify.addstep_compute(next_restart_single);
-                    }
+                    Console.WriteLine("Output.write()->next_restart_single == ntimestep");
+                    //char* file = new char[strlen(restart1) + 16];
+                    //char* ptr = strchr(restart1, '*');
+                    //*ptr = '\0';
+                    //sprintf(file, "%s" BIGINT_FORMAT "%s", restart1, ntimestep, ptr + 1);
+                    //*ptr = '*';
+                    //if (last_restart != ntimestep) restart.write(file);
+                    //delete[] file;
+                    //if (restart_every_single!=0) next_restart_single += restart_every_single;
+                    //else
+                    //{
+                    //    sparta.modify.clearstep_compute();
+                    //    bigint nextrestart = Convert.ToInt64
+                    //      (sparta.input.variable.compute_equal(ivar_restart_single));
+                    //    if (nextrestart <= ntimestep)
+                    //        sparta.error.all("Restart variable returned a bad timestep");
+                    //    next_restart_single = nextrestart;
+                    //    sparta.modify.addstep_compute(next_restart_single);
+                    //}
                 }
                 if (next_restart_double == ntimestep)
                 {

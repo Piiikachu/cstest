@@ -247,8 +247,8 @@ namespace cstest
             if (maxsort < maxlocal)
             {
                 maxsort = maxlocal;
-                //memory->destroy(next);
-                //memory->create(next, maxsort, "particle:next");
+                //memory.destroy(next);
+                //memory.create(next, maxsort, "particle:next");
                 next = new int[maxsort];
             }
 
@@ -499,8 +499,8 @@ namespace cstest
             p.evib = evib;
             p.flag = (int)Enum1.PKEEP;
 
-            //p->dtremain = 0.0;    not needed due to memset in grow() ??
-            //p->weight = 1.0;      not needed due to memset in grow() ??
+            //p.dtremain = 0.0;    not needed due to memset in grow() ??
+            //p.weight = 1.0;      not needed due to memset in grow() ??
             particles[nlocal] = p;
             nlocal++;
             return reallocflag;

@@ -142,7 +142,7 @@ namespace cstest
                 //jp = NULL;
                 //particle.nlocal--;
                 //}
-                Console.WriteLine("SurfCollideDiffuse.collide-> react");
+                Console.WriteLine("SurfCollideDiffuse.collide. react");
             }
 
             return jp;

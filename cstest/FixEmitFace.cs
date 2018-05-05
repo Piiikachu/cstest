@@ -774,7 +774,7 @@ namespace cstest
                 if (sparta.grid.nlocal > maxactive)
                 {
                     maxactive = sparta.grid.nlocal;
-                    //memory->create(activecell, maxactive, "emit/face:active");
+                    //memory.create(activecell, maxactive, "emit/face:active");
                     activecell = new int[maxactive];
                 }
                 //memset(activecell, 0, maxactive * sizeof(int));
@@ -817,7 +817,7 @@ namespace cstest
                 tasks = new List<Task>(ntaskmax);
             }
 
-            //tasks = (Task*)memory->srealloc(tasks, ntaskmax * sizeof(Task),
+            //tasks = (Task*)memory.srealloc(tasks, ntaskmax * sizeof(Task),
             //                  "emit/face:tasks");
 
             // set all new task bytes to 0 so valgrind won't complain
