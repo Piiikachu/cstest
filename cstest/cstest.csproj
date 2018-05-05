@@ -49,6 +49,7 @@
     <Compile Include="Compute.cs" />
     <Compile Include="CreateBox.cs" />
     <Compile Include="CreateGrid.cs" />
+    <Compile Include="CreateParticles.cs" />
     <Compile Include="Cut2d.cs" />
     <Compile Include="Cut3d.cs" />
     <Compile Include="Domain.cs" />

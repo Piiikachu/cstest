@@ -285,7 +285,11 @@ namespace cstest
         //public int particle_style(int);
         //public int grid_style(int);
         //public int surf_style(int);
-        //public int internal_style(int);
+        public int internal_style(int ivar)
+        {
+            if (style[ivar] == (int)Enum1.INTERNAL) return 1;
+            return 0;
+        }
 
         //public char* retrieve(char*);
         public double compute_equal(int ivar)
